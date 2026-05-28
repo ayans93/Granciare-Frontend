@@ -1,0 +1,4 @@
+/* App-level overrides — page content sits below 80px navbar */
+main {
+  min-height: 100vh;
+}

@@ -1,0 +1,111 @@
+.booking-widget {
+  padding: 56px 48px;
+  border: 1px solid var(--cream-dark);
+}
+
+.booking-widget--light {
+  background: var(--warm-white);
+}
+
+.booking-widget--dark {
+  background: var(--charcoal);
+  border-color: rgba(255,255,255,0.08);
+}
+.booking-widget--dark .form-group label { color: rgba(255,255,255,0.45); }
+.booking-widget--dark .form-group input,
+.booking-widget--dark .form-group select,
+.booking-widget--dark .form-group textarea {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+  color: #fff;
+}
+.booking-widget--dark .form-group input::placeholder,
+.booking-widget--dark .form-group textarea::placeholder { color: rgba(255,255,255,0.3); }
+.booking-widget--dark .form-group input:focus,
+.booking-widget--dark .form-group select:focus,
+.booking-widget--dark .form-group textarea:focus { border-color: var(--terracotta-lt); }
+.booking-widget--dark .booking-widget__note { color: rgba(255,255,255,0.4); }
+.booking-widget--dark .booking-widget__note a { color: var(--gold-lt); }
+.booking-widget--dark .booking-widget__title { color: #fff; }
+
+.booking-widget__header {
+  margin-bottom: 36px;
+}
+
+.booking-widget__title {
+  font-size: 28px;
+  color: var(--charcoal);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.booking-widget__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.booking-widget__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.booking-widget__row--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.booking-widget__submit {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 16px 40px;
+}
+
+.booking-widget__note {
+  font-size: 13px;
+  color: var(--stone);
+}
+.booking-widget__note a {
+  color: var(--terracotta);
+  transition: color var(--transition);
+}
+.booking-widget__note a:hover { color: var(--charcoal); }
+
+/* Success */
+.booking-widget--success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+.booking-success {
+  text-align: center;
+  max-width: 400px;
+}
+.booking-success__icon {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: var(--olive);
+  color: #fff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+.booking-success h3 {
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+.booking-success p {
+  font-family: var(--font-elegant);
+  font-size: 17px;
+  color: var(--stone);
+}
+
+@media (max-width: 768px) {
+  .booking-widget { padding: 36px 24px; }
+  .booking-widget__row { grid-template-columns: 1fr; }
+  .booking-widget__row--2 { grid-template-columns: 1fr; }
+  .booking-widget__submit { align-self: stretch; justify-content: center; }
+}
