@@ -156,36 +156,56 @@
 .amenities__grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
+  gap: 3px;
 }
 .amenity-card {
-  background: var(--warm-white);
-  padding: 36px 28px;
-  transition: background var(--transition);
+  display: flex;
+  flex-direction: column;
+  padding: 36px 28px 40px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
-.amenity-card:hover { background: var(--charcoal); }
-.amenity-card:hover .amenity-card__label,
-.amenity-card:hover .amenity-card__desc { color: rgba(255,255,255,0.9); }
-.amenity-card:hover .amenity-card__desc { color: rgba(255,255,255,0.6); }
-.amenity-card__icon {
-  font-size: 28px;
-  display: block;
-  margin-bottom: 16px;
-  filter: grayscale(0);
+.amenity-card--warm {
+  background: var(--olive);        /* #6B7A50 — muted sage olive */
 }
+.amenity-card--grey {
+  background: var(--charcoal-lt);  /* #3A3733 — warm dark charcoal */
+}
+.amenity-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+  z-index: 1;
+  position: relative;
+}
+.amenity-card__icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  color: #fff;
+  flex-shrink: 0;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+.amenity-card:hover .amenity-card__icon-wrap {
+  background: rgba(255,255,255,0.25);
+  transform: scale(1.08);
+}
+.amenity-card__text {}
 .amenity-card__label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--charcoal);
-  margin-bottom: 8px;
-  transition: color var(--transition);
+  letter-spacing: 0.06em;
+  color: #fff;
+  margin-bottom: 10px;
+  text-transform: uppercase;
 }
 .amenity-card__desc {
   font-size: 13px;
-  color: var(--stone);
-  line-height: 1.65;
-  transition: color var(--transition);
+  color: rgba(255,255,255,0.72);
+  line-height: 1.7;
 }
 
 /* ── ROOMS ────────────────────────────────────────────────── */
@@ -198,7 +218,7 @@
 .room-card { display: flex; flex-direction: column; }
 .room-card__image {
   position: relative;
-  height: 300px;
+  height: 420px;
   overflow: hidden;
 }
 .room-card__image img {
