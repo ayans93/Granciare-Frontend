@@ -1,0 +1,263 @@
+/* ── PHOTO ALBUM MODAL ─────────────────────────────────────── */
+.photo-album {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: var(--warm-white);
+  display: flex;
+  flex-direction: column;
+  animation: paSlideUp 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: hidden;
+}
+@keyframes paSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── HEADER ────────────────────────────────────────────────── */
+.pa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--cream-dark);
+  background: var(--warm-white);
+  flex-shrink: 0;
+}
+.pa-header__left {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.pa-header__title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--charcoal);
+  letter-spacing: -0.01em;
+}
+.pa-header__count {
+  font-size: 12px;
+  color: var(--stone);
+  letter-spacing: 0.08em;
+}
+.pa-header__close {
+  width: 42px; height: 42px;
+  border: 1px solid var(--cream-dark);
+  background: transparent;
+  color: var(--charcoal);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+.pa-header__close:hover {
+  background: var(--cream);
+  border-color: var(--stone-lt);
+}
+
+/* ── CATEGORY TABS ─────────────────────────────────────────── */
+.pa-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 14px 32px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  background: var(--cream);
+  border-bottom: 1px solid var(--cream-dark);
+  scrollbar-width: none;
+}
+.pa-tabs::-webkit-scrollbar { display: none; }
+
+.pa-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid var(--cream-dark);
+  background: var(--warm-white);
+  color: var(--charcoal-lt);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.pa-tab:hover {
+  border-color: var(--stone-lt);
+  color: var(--charcoal);
+}
+.pa-tab--active {
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: #fff;
+}
+.pa-tab--active .pa-tab__badge {
+  background: rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.85);
+}
+.pa-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cream-dark);
+  color: var(--stone);
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── PHOTO GRID — vertical scroll CSS grid ──────────────────── */
+.pa-grid {
+  flex: 1;
+  overflow-y: auto;             /* vertical scroll only */
+  overflow-x: hidden;
+  padding: 20px 28px 40px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 200px;        /* uniform row height — clean, predictable */
+  gap: 6px;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cream-dark) transparent;
+  background: var(--warm-white);
+}
+.pa-grid::-webkit-scrollbar { width: 4px; }
+.pa-grid::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 2px; }
+
+.pa-grid__item {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--cream);
+}
+.pa-grid__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;            /* fills the cell, crops gracefully */
+  display: block;
+  transition: transform 0.45s ease, filter 0.3s ease;
+}
+.pa-grid__item:hover img {
+  transform: scale(1.05);
+  filter: brightness(0.85);
+}
+
+.pa-grid__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.pa-grid__item:hover .pa-grid__overlay { opacity: 1; }
+
+/* ── FULLSCREEN LIGHTBOX (inside album) ────────────────────── */
+.pa-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(8,6,4,0.97);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lbFade 0.18s ease;
+}
+@keyframes lbFade { from { opacity: 0; } to { opacity: 1; } }
+
+.pa-lightbox__close {
+  position: absolute;
+  top: 20px; right: 20px;
+  width: 42px; height: 42px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  z-index: 2;
+}
+.pa-lightbox__close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+.pa-lightbox__img-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+.pa-lightbox__img {
+  max-width: 90vw;
+  max-height: 82vh;
+  object-fit: contain;
+  display: block;
+  animation: imgPop 0.2s ease;
+}
+@keyframes imgPop { from { opacity: 0.6; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+
+.pa-lightbox__counter {
+  margin-top: 12px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.1em;
+}
+
+/* Full-height side strips — always visible, easy to click */
+.pa-lightbox__nav {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 72px;
+  border: none;
+  background: linear-gradient(to right, rgba(0,0,0,0.35), transparent);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s;
+  z-index: 3;
+}
+.pa-lightbox__nav--prev {
+  left: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.45), transparent);
+}
+.pa-lightbox__nav--next {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,0.45), transparent);
+}
+.pa-lightbox__nav:hover { background: linear-gradient(to right, rgba(0,0,0,0.65), transparent); }
+.pa-lightbox__nav--next:hover { background: linear-gradient(to left, rgba(0,0,0,0.65), transparent); }
+.pa-lightbox__nav svg { width: 36px; height: 36px; stroke-width: 1.5; drop-shadow: 0 0 8px rgba(0,0,0,0.6); }
+
+/* ── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .pa-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .pa-header { padding: 16px 20px; }
+  .pa-tabs { padding: 12px 16px; }
+  .pa-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 160px;
+    padding: 12px 12px 28px;
+    gap: 5px;
+  }
+  .pa-lightbox__nav { width: 48px; }
+  .pa-lightbox__nav svg { width: 26px; height: 26px; }
+}
+@media (max-width: 480px) {
+  .pa-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 130px; }
+}

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import BookingWidget from '../components/BookingWidget';
 import GalleryShowcase from '../components/GalleryShowcase';
+import PhotoAlbum from '../components/PhotoAlbum';
 import './Granciare.css';
 
 /* ── SVG Icons for amenities ─────────────────────────────── */
@@ -115,6 +117,8 @@ const testimonials = [
 ];
 
 export default function Granciare() {
+  const [albumOpen, setAlbumOpen] = useState(false);
+
   return (
     <div className="granciare">
 
@@ -220,18 +224,37 @@ export default function Granciare() {
 
       {/* ── GALLERY ──────────────────────────────────────────── */}
       <section className="granciare__gallery">
-        <div className="container mb-32">
-          <span className="section-label">The Estate in Images</span>
-          <h2 className="section-title">A visual journey</h2>
+        <div className="gallery__header container">
+          <div className="gallery__header-text">
+            <span className="section-label">The Estate in Images</span>
+            <h2 className="section-title">A visual journey</h2>
+          </div>
+          <button className="gallery__open-btn" onClick={() => setAlbumOpen(true)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Browse full photo album
+          </button>
         </div>
         <div className="gallery__grid">
           {gallery.map((src, i) => (
-            <div key={i} className={`gallery__item gallery__item--${i + 1}`}>
+            <div
+              key={i}
+              className={`gallery__item gallery__item--${i + 1}`}
+              onClick={() => setAlbumOpen(true)}
+              title="Click to open full photo album"
+            >
               <img src={src} alt={`Gallery ${i + 1}`} />
+              <div className="gallery__item-overlay">
+                <span>View all photos</span>
+              </div>
             </div>
           ))}
         </div>
       </section>
+
+      {albumOpen && <PhotoAlbum onClose={() => setAlbumOpen(false)} />}
 
       {/* ── OLIVE OIL TEASER ─────────────────────────────────── */}
       <section className="section granciare__olive-teaser">

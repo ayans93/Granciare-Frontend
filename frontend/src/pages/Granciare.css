@@ -165,46 +165,47 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .amenity-card--warm {
-  background: var(--olive);        /* #6B7A50 — muted sage olive */
+  background: var(--warm-white);
 }
 .amenity-card--grey {
-  background: var(--charcoal-lt);  /* #3A3733 — warm dark charcoal */
+  background: var(--cream);
 }
 .amenity-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.09);
   z-index: 1;
   position: relative;
 }
 .amenity-card__icon-wrap {
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
+  background: var(--cream-dark);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
-  color: #fff;
+  color: var(--terracotta);
   flex-shrink: 0;
   transition: background 0.25s ease, transform 0.25s ease;
 }
 .amenity-card:hover .amenity-card__icon-wrap {
-  background: rgba(255,255,255,0.25);
+  background: var(--terracotta);
+  color: #fff;
   transform: scale(1.08);
 }
 .amenity-card__text {}
 .amenity-card__label {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #fff;
-  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--charcoal);
+  margin-bottom: 8px;
   text-transform: uppercase;
 }
 .amenity-card__desc {
   font-size: 13px;
-  color: rgba(255,255,255,0.72);
+  color: var(--stone);
   line-height: 1.7;
 }
 
@@ -263,22 +264,90 @@
 }
 
 /* ── GALLERY ──────────────────────────────────────────────── */
-.granciare__gallery { overflow: hidden; }
+.granciare__gallery {
+  background: var(--charcoal);
+  overflow: hidden;
+}
+.gallery__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-top: 72px;
+  padding-bottom: 40px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.gallery__header-text {}
+.granciare__gallery .section-label { color: var(--gold-lt); }
+.granciare__gallery .section-label::before { background: var(--gold-lt); }
+.granciare__gallery .section-title { color: #fff; margin-bottom: 0; }
+
+.gallery__open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 24px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s, color 0.25s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.gallery__open-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.5);
+  color: #fff;
+}
+
 .gallery__grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: 280px 280px;
   gap: 4px;
+  padding-bottom: 0;
 }
-.gallery__item { overflow: hidden; }
+.gallery__item {
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
 .gallery__item img {
   width: 100%; height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
+  display: block;
 }
 .gallery__item:hover img { transform: scale(1.06); }
 .gallery__item--1 { grid-column: 1/3; }
 .gallery__item--4 { grid-column: 3/5; }
+
+.gallery__item-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20,18,16,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.gallery__item:hover .gallery__item-overlay { opacity: 1; }
+.gallery__item-overlay span {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.5);
+  padding: 9px 18px;
+  backdrop-filter: blur(4px);
+}
 
 /* ── OLIVE TEASER ─────────────────────────────────────────── */
 .olive-teaser {
@@ -383,8 +452,9 @@
 /* ── RESPONSIVE ───────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .amenities__grid { grid-template-columns: repeat(2, 1fr); }
-  .gallery__grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; }
+  .gallery__grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: 220px 220px 220px; }
   .gallery__item--1, .gallery__item--4 { grid-column: auto; }
+  .gallery__header { padding-top: 48px; padding-bottom: 28px; }
 }
 @media (max-width: 900px) {
   .granciare__intro-grid { grid-template-columns: 1fr; gap: 48px; }

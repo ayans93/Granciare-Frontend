@@ -1,10 +1,35 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import './Navbar.css';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLogoClick = (e) => {
+    if (location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setMenuOpen(false);
+  };
+
+  const handleBookClick = (e) => {
+    e.preventDefault();
+    setMenuOpen(false);
+    if (location.pathname === '/') {
+      // Already on home — just scroll
+      document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Navigate home, then scroll after page renders
+      navigate('/');
+      setTimeout(() => {
+        document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' });
+      }, 350);
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -28,7 +53,7 @@ export default function Navbar() {
     <header className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}>
       <div className="navbar__inner">
         {/* Logo */}
-        <Link to="/" className="navbar__logo" onClick={() => setMenuOpen(false)}>
+        <Link to="/" className="navbar__logo" onClick={handleLogoClick}>
           <span className="navbar__logo-main">Granciare</span>
           <span className="navbar__logo-sub">Estate · Umbria</span>
         </Link>
@@ -56,7 +81,7 @@ export default function Navbar() {
             </svg>
             WhatsApp
           </a>
-          <Link to="/#book" className="btn btn-primary navbar__book">Book a Stay</Link>
+          <button onClick={handleBookClick} className="btn btn-primary navbar__book">Book a Stay</button>
         </div>
 
         {/* Hamburger */}
