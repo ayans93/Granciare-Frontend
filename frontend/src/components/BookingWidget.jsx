@@ -6,13 +6,44 @@ export default function BookingWidget({ variant = 'light' }) {
     checkin: '', checkout: '', guests: '2', name: '', email: '', phone: '', notes: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault();
-    // In production: POST to backend API
-    setSubmitted(true);
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          checkIn: form.checkin,
+          checkOut: form.checkout,
+          guests: form.guests,
+          message: form.notes,
+          source: 'granciare.com — Booking Form',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong. Please try again.');
+      } else {
+        setSubmitted(true);
+      }
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -22,7 +53,7 @@ export default function BookingWidget({ variant = 'light' }) {
           <div className="booking-success__icon">✓</div>
           <h3>Enquiry Received</h3>
           <p>Thank you, {form.name}. We'll get back to you within 24 hours to confirm your stay at Granciare.</p>
-          <button className="btn btn-outline mt-24" onClick={() => setSubmitted(false)}>New Enquiry</button>
+          <button className="btn btn-outline mt-24" onClick={() => { setSubmitted(false); setError(''); }}>New Enquiry</button>
         </div>
       </div>
     );
@@ -90,11 +121,19 @@ export default function BookingWidget({ variant = 'light' }) {
           <textarea name="notes" value={form.notes} onChange={handle} placeholder="Any special requirements, dietary needs, occasion…" />
         </div>
 
-        <button type="submit" className="btn btn-primary booking-widget__submit">
-          Send Enquiry
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>
+        {error && (
+          <div className="booking-widget__error">
+            {error}
+          </div>
+        )}
+
+        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading}>
+          {loading ? 'Sending…' : 'Send Enquiry'}
+          {!loading && (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          )}
         </button>
 
         <p className="booking-widget__note">

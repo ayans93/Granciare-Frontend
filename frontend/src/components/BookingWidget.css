@@ -103,6 +103,21 @@
   color: var(--stone);
 }
 
+.booking-widget__error {
+  padding: 14px 18px;
+  background: #fff3f3;
+  border: 1px solid #f5c2c2;
+  color: #c0392b;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.booking-widget__submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .booking-widget { padding: 36px 24px; }
   .booking-widget__row { grid-template-columns: 1fr; }
