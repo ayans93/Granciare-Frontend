@@ -29,7 +29,7 @@ async function getBookings() {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: 'Sheet1!A2:I',   // skip header row, read all data rows
+    range: 'Enquiries!A2:I',   // skip header row, read all data rows
   });
 
   return response.data.values || [];
