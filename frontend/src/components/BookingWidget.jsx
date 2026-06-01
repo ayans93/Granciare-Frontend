@@ -1,20 +1,28 @@
 import { useState } from 'react';
+import DateRangePicker from './DateRangePicker';
 import './BookingWidget.css';
 
 export default function BookingWidget({ variant = 'light' }) {
-  const [form, setForm] = useState({
-    checkin: '', checkout: '', guests: '2', name: '', email: '', phone: '', notes: ''
-  });
+  const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
+  const [form, setForm] = useState({ guests: '2', name: '', email: '', phone: '', notes: '' });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('');
   const [error, setError] = useState('');
 
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
 
   const submit = async e => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+
+    if (!dates.checkIn || !dates.checkOut) {
+      setError('Please select your check-in and check-out dates.');
+      return;
+    }
+
+    setLoading(true);
+    setLoadingMsg('Sending enquiry…');
 
     try {
       const res = await fetch('/api/enquiry', {
@@ -24,8 +32,8 @@ export default function BookingWidget({ variant = 'light' }) {
           name: form.name,
           email: form.email,
           phone: form.phone,
-          checkIn: form.checkin,
-          checkOut: form.checkout,
+          checkIn: dates.checkIn,
+          checkOut: dates.checkOut,
           guests: form.guests,
           message: form.notes,
           source: 'granciare.com — Booking Form',
@@ -43,6 +51,7 @@ export default function BookingWidget({ variant = 'light' }) {
       setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
+      setLoadingMsg('');
     }
   };
 
@@ -53,7 +62,7 @@ export default function BookingWidget({ variant = 'light' }) {
           <div className="booking-success__icon">✓</div>
           <h3>Enquiry Received</h3>
           <p>Thank you, {form.name}. We'll get back to you within 24 hours to confirm your stay at Granciare.</p>
-          <button className="btn btn-outline mt-24" onClick={() => { setSubmitted(false); setError(''); }}>New Enquiry</button>
+          <button className="btn btn-outline mt-24" onClick={() => { setSubmitted(false); setError(''); setDates({ checkIn: '', checkOut: '' }); }}>New Enquiry</button>
         </div>
       </div>
     );
@@ -67,37 +76,24 @@ export default function BookingWidget({ variant = 'light' }) {
       </div>
 
       <form onSubmit={submit} className="booking-widget__form">
-        <div className="booking-widget__row">
-          <div className="form-group">
-            <label>Check-in</label>
-            <input
-              type="date"
-              name="checkin"
-              value={form.checkin}
-              onChange={handle}
-              min={new Date().toISOString().split('T')[0]}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Check-out</label>
-            <input
-              type="date"
-              name="checkout"
-              value={form.checkout}
-              onChange={handle}
-              min={form.checkin || new Date().toISOString().split('T')[0]}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Guests</label>
-            <select name="guests" value={form.guests} onChange={handle}>
-              {[1,2,3,4,5,6,7,8].map(n => (
-                <option key={n} value={n}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
-              ))}
-            </select>
-          </div>
+
+        {/* Date Range Picker */}
+        <div className="form-group">
+          <DateRangePicker
+            checkIn={dates.checkIn}
+            checkOut={dates.checkOut}
+            onChange={setDates}
+          />
+        </div>
+
+        {/* Guests */}
+        <div className="form-group">
+          <label>Guests</label>
+          <select name="guests" value={form.guests} onChange={handle}>
+            {[1,2,3,4,5,6,7,8].map(n => (
+              <option key={n} value={n}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
+            ))}
+          </select>
         </div>
 
         <div className="booking-widget__row booking-widget__row--2">
@@ -128,7 +124,7 @@ export default function BookingWidget({ variant = 'light' }) {
         )}
 
         <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading}>
-          {loading ? 'Sending…' : 'Send Enquiry'}
+          {loading ? loadingMsg : 'Send Enquiry'}
           {!loading && (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>

@@ -51,7 +51,7 @@ async function appendToSheet(data) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: 'Enquiries!A:I',
+    range: 'Sheet1!A:I',
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
@@ -153,6 +153,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
 
+  // ── Check all required env vars are present
+  const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'NOTIFY_EMAIL'];
+  const missingEnv = requiredEnv.filter(k => !process.env[k]);
+  if (missingEnv.length > 0) {
+    console.error('Missing env vars:', missingEnv.join(', '));
+    return res.status(500).json({ error: `Server misconfiguration. Missing: ${missingEnv.join(', ')}` });
+  }
+
   const data = { name: name.trim(), email: email.trim(), phone, checkIn, checkOut, guests, message, source };
 
   try {
@@ -165,6 +173,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'Enquiry received. We will be in touch shortly.' });
   } catch (err) {
     console.error('Enquiry handler error:', err);
-    return res.status(500).json({ error: 'Something went wrong. Please try WhatsApp or email us directly.' });
+    return res.status(500).json({ error: `Internal error: ${err.message}` });
   }
 }
