@@ -1,12 +1,10 @@
 /**
  * Vercel Edge Middleware — IP Whitelist
  *
- * Runs before every request. If IP_WHITELIST env var is set, only visitors
- * whose IP appears in the comma-separated list are shown the real site.
- * Everyone else sees the branded "coming soon" maintenance page.
+ * Uses @vercel/edge for reliable pass-through on Vite/non-Next.js deployments.
  *
  * Setup:
- *   1. Add IP_WHITELIST to Vercel environment variables
+ *   1. Add IP_WHITELIST to Vercel environment variables (comma-separated IPs)
  *      e.g.  203.0.113.42,198.51.100.7
  *   2. Redeploy — the middleware activates automatically.
  *   3. To open the site to everyone, delete IP_WHITELIST or leave it empty.
@@ -14,8 +12,10 @@
  * Find your current IP: https://whatismyip.com
  */
 
+import { next } from '@vercel/edge';
+
 export const config = {
-  matcher: '/:path*',   // run on every route, including /api/*
+  matcher: ['/((?!_next|favicon.ico).*)'],
 };
 
 // ── Branded maintenance page ────────────────────────────────────
@@ -28,7 +28,6 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
   <title>Granciare Estate — Coming Soon</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       background: #1e1c1a;
       color: #faf8f5;
@@ -41,7 +40,6 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
       text-align: center;
       padding: 40px 24px;
     }
-
     .eyebrow {
       font-family: 'Calibri', Arial, sans-serif;
       font-size: 10px;
@@ -51,23 +49,19 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
       text-transform: uppercase;
       margin-bottom: 20px;
     }
-
     h1 {
       font-size: clamp(48px, 10vw, 80px);
       font-weight: 400;
       line-height: 1;
-      letter-spacing: -0.01em;
       color: #faf8f5;
       margin-bottom: 6px;
     }
-
     .subtitle {
       font-size: clamp(16px, 3vw, 20px);
       font-style: italic;
       color: #c9a96e;
       margin-bottom: 40px;
     }
-
     .divider {
       width: 48px;
       height: 1.5px;
@@ -75,7 +69,6 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
       margin: 0 auto 40px;
       opacity: 0.7;
     }
-
     .message {
       font-family: 'Calibri', Arial, sans-serif;
       font-size: clamp(13px, 2vw, 15px);
@@ -83,12 +76,10 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
       color: rgba(250, 248, 245, 0.55);
       max-width: 400px;
     }
-
     footer {
       position: fixed;
       bottom: 28px;
-      left: 0;
-      right: 0;
+      left: 0; right: 0;
       font-family: 'Calibri', Arial, sans-serif;
       font-size: 10px;
       letter-spacing: 0.12em;
@@ -112,25 +103,27 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 
 // ── Middleware handler ──────────────────────────────────────────
 export default function middleware(request) {
-  // Read visitor IP — Vercel sets x-forwarded-for on all requests
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp    = request.headers.get('x-real-ip');
-  const visitorIp = (forwarded ? forwarded.split(',')[0] : realIp || '').trim();
+  // x-vercel-ip-address is Vercel's native real-IP header (most accurate)
+  // Fall back to x-forwarded-for if not present
+  const ip =
+    request.headers.get('x-vercel-ip-address') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    '';
 
   // Parse whitelist from env var (comma-separated IPs)
-  const rawList   = process.env.IP_WHITELIST || '';
+  const rawList  = process.env.IP_WHITELIST || '';
   const whitelist = rawList
     .split(',')
-    .map((ip) => ip.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 
   // If no whitelist is configured → let everyone through (safe default)
-  if (whitelist.length === 0) return;
+  if (whitelist.length === 0) return next();
 
-  // If the visitor's IP is on the list → let them through
-  if (visitorIp && whitelist.includes(visitorIp)) return;
+  // If the visitor's IP is whitelisted → let them through
+  if (ip && whitelist.includes(ip)) return next();
 
-  // Otherwise → show the maintenance page
+  // Otherwise → show the branded maintenance page
   return new Response(MAINTENANCE_HTML, {
     status: 200,
     headers: {
