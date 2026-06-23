@@ -6,6 +6,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Granciare Estate · Luxury Villa in Umbria, Italy</title>
     <meta name="description" content="Granciare is a private luxury estate in Umbria, Italy — offering exclusive villa stays, an immersive olive oil experience, and the finest Italian living." />
+
+    <!--
+      ACCESS GATE — hides page instantly, then checks /api/check-access.
+      Whitelisted IP → page becomes visible, React loads normally.
+      Other IP       → page is replaced with the branded "coming soon" screen.
+      API error      → fail open (page shows) so the owner is never locked out.
+      To disable: delete IP_WHITELIST from Vercel environment variables.
+    -->
+    <style id="gate-hide">html { visibility: hidden !important; }</style>
+    <script>
+      (function () {
+        var MAINTENANCE = '<!DOCTYPE html>'
+          + '<html lang="en"><head>'
+          + '<meta charset="UTF-8"/>'
+          + '<meta name="viewport" content="width=device-width,initial-scale=1.0"/>'
+          + '<meta name="robots" content="noindex,nofollow"/>'
+          + '<title>Granciare Estate — Coming Soon<\/title>'
+          + '<style>'
+          + '*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}'
+          + 'body{background:#1e1c1a;color:#faf8f5;font-family:Georgia,serif;'
+          + 'min-height:100svh;display:flex;flex-direction:column;'
+          + 'align-items:center;justify-content:center;text-align:center;padding:40px 24px}'
+          + '.ey{font-family:Calibri,Arial,sans-serif;font-size:10px;font-weight:700;'
+          + 'letter-spacing:.2em;color:#c9a96e;text-transform:uppercase;margin-bottom:20px}'
+          + 'h1{font-size:clamp(48px,10vw,80px);font-weight:400;line-height:1;'
+          + 'color:#faf8f5;margin-bottom:6px}'
+          + '.sub{font-size:clamp(16px,3vw,20px);font-style:italic;color:#c9a96e;margin-bottom:40px}'
+          + '.div{width:48px;height:1.5px;background:#c9a96e;margin:0 auto 40px;opacity:.7}'
+          + '.msg{font-family:Calibri,Arial,sans-serif;font-size:clamp(13px,2vw,15px);'
+          + 'line-height:1.9;color:rgba(250,248,245,.55);max-width:400px}'
+          + 'footer{position:fixed;bottom:28px;left:0;right:0;'
+          + 'font-family:Calibri,Arial,sans-serif;font-size:10px;letter-spacing:.12em;'
+          + 'color:rgba(250,248,245,.22);text-transform:uppercase}'
+          + '<\/style><\/head><body>'
+          + '<p class="ey">Umbria, Italy · Luxury Estate<\/p>'
+          + '<h1>Granciare<\/h1>'
+          + '<p class="sub">Estate &amp; Agri-Tourism<\/p>'
+          + '<div class="div"><\/div>'
+          + '<p class="msg">We are putting the finishing touches on something beautiful.'
+          + '<br>The estate will be ready to welcome you very soon.<\/p>'
+          + '<footer>granciare.com · 2026<\/footer>'
+          + '<\/body><\/html>';
+
+        function show() {
+          var el = document.getElementById('gate-hide');
+          if (el) el.remove();
+        }
+
+        fetch('/api/check-access')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d.allowed) {
+              show();
+            } else {
+              document.open();
+              document.write(MAINTENANCE);
+              document.close();
+            }
+          })
+          .catch(function () {
+            // API unreachable — fail open so owner is never locked out
+            show();
+          });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
