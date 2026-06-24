@@ -259,7 +259,221 @@
   cursor: not-allowed;
 }
 
-/* ── Extras / Special Requests checkboxes ─────────────────────────── */
+/* ── Guest Counters ───────────────────────────────────────────────── */
+.guest-counters {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--cream-dark);
+}
+
+.guest-counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--cream-dark);
+}
+.guest-counter:last-child { border-bottom: none; }
+
+.guest-counter__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.guest-counter__label span:first-child {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--charcoal);
+  letter-spacing: 0.01em;
+}
+.guest-counter__sub {
+  font-size: 11px;
+  color: var(--stone);
+  letter-spacing: 0.04em;
+}
+
+.guest-counter__control {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--cream-dark);
+  background: #fff;
+}
+
+.guest-counter__btn {
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--terracotta);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+.guest-counter__btn:hover { background: var(--cream); }
+.guest-counter__btn:active { background: var(--cream-dark); }
+
+.guest-counter__input {
+  width: 48px;
+  height: 36px;
+  border: none;
+  border-left: 1px solid var(--cream-dark);
+  border-right: 1px solid var(--cream-dark);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--charcoal);
+  background: #fff;
+  -moz-appearance: textfield;
+  padding: 0;
+}
+.guest-counter__input::-webkit-outer-spin-button,
+.guest-counter__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.guest-counter__input:focus { outline: none; background: #fdf9f7; }
+
+/* Over-limit error state — red border on the whole block */
+.guest-counters--error {
+  border-color: #c0392b;
+}
+.guest-counters--error .guest-counter {
+  border-bottom-color: #f5c2c2;
+}
+.guest-counters--error .guest-counter__control {
+  border-color: #f5c2c2;
+}
+
+/* Dark variant */
+.booking-widget--dark .guest-counters,
+.booking-widget--dark .guest-counter { border-color: rgba(255,255,255,0.1); }
+.booking-widget--dark .guest-counter__label span:first-child { color: rgba(255,255,255,0.9); }
+.booking-widget--dark .guest-counter__sub { color: rgba(255,255,255,0.4); }
+.booking-widget--dark .guest-counter__control { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); }
+.booking-widget--dark .guest-counter__input { background: transparent; color: #fff; border-color: rgba(255,255,255,0.12); }
+.booking-widget--dark .guest-counter__btn { color: var(--gold-lt); }
+.booking-widget--dark .guest-counter__btn:hover { background: rgba(255,255,255,0.08); }
+
+/* ── Tag-based Special Requests ───────────────────────────────────── */
+.tag-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  border: none;
+  line-height: 1;
+}
+
+.tag--selected {
+  padding: 6px 10px;
+  background: var(--terracotta);
+  color: #fff;
+  font-weight: 500;
+}
+
+.tag__remove {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color var(--transition);
+}
+.tag__remove:hover { color: #fff; }
+
+.tag--suggestion {
+  padding: 6px 12px;
+  background: var(--cream);
+  color: var(--stone);
+  border: 1px solid var(--cream-dark);
+}
+.tag--suggestion:hover {
+  background: #fdf6f3;
+  border-color: var(--terracotta-lt);
+  color: var(--terracotta);
+}
+
+.tag-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.tag-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--cream-dark);
+  font-family: var(--font-elegant);
+  font-size: 14px;
+  color: var(--charcoal);
+  background: #fff;
+  transition: border-color var(--transition);
+}
+.tag-input:focus { outline: none; border-color: var(--terracotta-lt); }
+
+.tag-input__add {
+  padding: 0 18px;
+  background: var(--charcoal);
+  color: #fff;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.tag-input__add:hover { background: var(--terracotta); }
+
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Dark variant */
+.booking-widget--dark .tag--suggestion {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+}
+.booking-widget--dark .tag--suggestion:hover {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.9);
+}
+.booking-widget--dark .tag-input {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+  color: #fff;
+}
+.booking-widget--dark .tag-input::placeholder { color: rgba(255,255,255,0.3); }
+.booking-widget--dark .tag-input:focus { border-color: var(--terracotta-lt); }
+.booking-widget--dark .tag-input__add { background: rgba(255,255,255,0.12); }
+.booking-widget--dark .tag-input__add:hover { background: var(--terracotta); }
+
+/* ── OLD Extras / Special Requests checkboxes (kept for reference) ── */
 .booking-extras {
   display: flex;
   flex-direction: column;

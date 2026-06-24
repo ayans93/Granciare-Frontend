@@ -1,16 +1,63 @@
 import { useState } from 'react';
 import DateRangePicker from './DateRangePicker';
 import PricingEstimator from './PricingEstimator';
+import PhoneInput from './PhoneInput';
 import { useTranslation } from '../i18n/LanguageContext';
 import './BookingWidget.css';
 
 export default function BookingWidget({ variant = 'light' }) {
   const { t } = useTranslation();
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
-  const [form, setForm] = useState({ guests: '2', name: '', email: '', phone: '', notes: '' });
-  const [extras, setExtras] = useState({ privateCook: false, extraCleaning: false, horseRiding: false });
+  const [form, setForm] = useState({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
+  const [guestRaw, setGuestRaw] = useState({ adults: '2', children: '0' });
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
 
-  const toggleExtra = (key) => setExtras(prev => ({ ...prev, [key]: !prev[key] }));
+  const MAX_GUESTS = 16;
+  const guestTotal = form.adults + form.children;
+  const guestOverLimit = guestTotal > MAX_GUESTS;
+
+  const SUGGESTED_TAGS = [
+    'Private Chef', 'Horse Riding', 'Cycling', 'Regular Cleaning',
+    'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions',
+  ];
+
+  const addTag = (tag) => {
+    const trimmed = tag.trim();
+    if (trimmed && !tags.includes(trimmed)) setTags(prev => [...prev, trimmed]);
+  };
+  const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
+  const handleTagInput = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput); setTagInput(''); }
+  };
+
+  // +/− buttons: block going below min, allow going above MAX (error shows instead)
+  const adjustGuests = (field, delta) => {
+    setForm(prev => {
+      const min = field === 'adults' ? 1 : 0;
+      const proposed = Math.max(min, prev[field] + delta);
+      setGuestRaw(r => ({ ...r, [field]: String(proposed) }));
+      return { ...prev, [field]: proposed };
+    });
+  };
+
+  // Free typing — update raw string and commit parsed value to form
+  const handleGuestChange = (field, val) => {
+    setGuestRaw(r => ({ ...r, [field]: val }));
+    const parsed = parseInt(val, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      setForm(prev => ({ ...prev, [field]: parsed }));
+    }
+  };
+
+  // On blur — normalise empty/invalid inputs to their minimum
+  const handleGuestBlur = (field) => {
+    const min = field === 'adults' ? 1 : 0;
+    const parsed = parseInt(guestRaw[field], 10);
+    const safe = isNaN(parsed) || parsed < min ? min : parsed;
+    setForm(prev => ({ ...prev, [field]: safe }));
+    setGuestRaw(r => ({ ...r, [field]: String(safe) }));
+  };
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -84,13 +131,11 @@ export default function BookingWidget({ variant = 'light' }) {
           phone: form.phone,
           checkIn: dates.checkIn,
           checkOut: dates.checkOut,
-          guests: form.guests,
+          guests: `${form.adults} adults, ${form.children} children`,
           message: [
-            extras.privateCook   ? '• Private Chef / Cook requested' : '',
-            extras.extraCleaning ? '• Extra Cleaning service requested' : '',
-            extras.horseRiding   ? '• Horse Riding experience requested' : '',
-            form.notes ? `\nAdditional notes:\n${form.notes}` : '',
-          ].filter(Boolean).join('\n'),
+            tags.length > 0 ? `Special requests: ${tags.join(', ')}` : '',
+            form.notes ? `Additional notes:\n${form.notes}` : '',
+          ].filter(Boolean).join('\n\n'),
           source: 'granciare.com — Booking Form',
         }),
       });
@@ -132,11 +177,6 @@ export default function BookingWidget({ variant = 'light' }) {
 
   if (submitted) {
     const nights = getNights(dates.checkIn, dates.checkOut);
-    const selectedExtras = [
-      extras.privateCook   && t('booking.extraPrivateCook'),
-      extras.extraCleaning && t('booking.extraCleaning'),
-      extras.horseRiding   && t('booking.extraHorseRiding'),
-    ].filter(Boolean);
 
     return (
       <div className={`booking-widget booking-widget--${variant} booking-widget--success`}>
@@ -174,12 +214,12 @@ export default function BookingWidget({ variant = 'light' }) {
             </div>
             <div className="booking-confirm__row">
               <span className="booking-confirm__label">{t('common.guests')}</span>
-              <span className="booking-confirm__value">{form.guests}</span>
+              <span className="booking-confirm__value">{form.adults} adults{form.children > 0 ? `, ${form.children} children` : ''}</span>
             </div>
-            {selectedExtras.length > 0 && (
+            {tags.length > 0 && (
               <div className="booking-confirm__row booking-confirm__row--extras">
                 <span className="booking-confirm__label">{t('common.specialRequests')}</span>
-                <span className="booking-confirm__value">{selectedExtras.join(' · ')}</span>
+                <span className="booking-confirm__value">{tags.join(' · ')}</span>
               </div>
             )}
           </div>
@@ -200,9 +240,11 @@ export default function BookingWidget({ variant = 'light' }) {
                 setSubmitted(false);
                 setError('');
                 setTcAccepted(false);
-                setExtras({ privateCook: false, extraCleaning: false, horseRiding: false });
+                setTags([]);
+                setTagInput('');
                 setDates({ checkIn: '', checkOut: '' });
-                setForm({ guests: '2', name: '', email: '', phone: '', notes: '' });
+                setForm({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
+                setGuestRaw({ adults: '2', children: '0' });
               }}
             >{t('booking.newEnquiry')}</button>
             <a href="https://wa.me/39000000000" className="btn btn-primary" target="_blank" rel="noreferrer">{t('booking.whatsappUs')}</a>
@@ -235,21 +277,59 @@ export default function BookingWidget({ variant = 'light' }) {
           )}
         </div>
 
-        {/* Guests */}
+        {/* Guests — Adults + Children counters */}
         <div className="form-group">
           <label>{t('common.guests')}</label>
-          <select name="guests" value={form.guests} onChange={handle}>
-            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(n => (
-              <option key={n} value={n}>{n} {n === 1 ? t('common.guest') : t('common.guests')}</option>
-            ))}
-          </select>
+          <p className="form-hint" style={{marginTop:0, marginBottom:'12px'}}>Property is best suited for larger groups of 8–16 guests</p>
+          <div className={`guest-counters${guestOverLimit ? ' guest-counters--error' : ''}`}>
+            <div className="guest-counter">
+              <div className="guest-counter__label">
+                <span>Adults</span>
+              </div>
+              <div className="guest-counter__control">
+                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('adults', -1)} aria-label="Fewer adults">−</button>
+                <input
+                  type="number"
+                  className="guest-counter__input"
+                  value={guestRaw.adults}
+                  min="1" max={MAX_GUESTS}
+                  onChange={e => handleGuestChange('adults', e.target.value)}
+                  onBlur={() => handleGuestBlur('adults')}
+                />
+                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('adults', 1)} aria-label="More adults">+</button>
+              </div>
+            </div>
+            <div className="guest-counter">
+              <div className="guest-counter__label">
+                <span>Children</span>
+                <span className="guest-counter__sub">Under 10</span>
+              </div>
+              <div className="guest-counter__control">
+                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', -1)} aria-label="Fewer children">−</button>
+                <input
+                  type="number"
+                  className="guest-counter__input"
+                  value={guestRaw.children}
+                  min="0" max={MAX_GUESTS}
+                  onChange={e => handleGuestChange('children', e.target.value)}
+                  onBlur={() => handleGuestBlur('children')}
+                />
+                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', 1)} aria-label="More children">+</button>
+              </div>
+            </div>
+          </div>
+          {guestOverLimit && (
+            <p className="form-hint form-hint--error" style={{marginTop:'8px'}}>
+              Maximum {MAX_GUESTS} guests total — please reduce adults or children.
+            </p>
+          )}
         </div>
 
         {/* Pricing Estimator — appears once dates are selected */}
         <PricingEstimator
           checkIn={dates.checkIn}
           checkOut={dates.checkOut}
-          guests={form.guests}
+          guests={form.adults + form.children}
         />
 
         <div className="booking-widget__row booking-widget__row--2">
@@ -265,54 +345,64 @@ export default function BookingWidget({ variant = 'light' }) {
 
         <div className="form-group">
           <label>{t('common.phone')}</label>
-          <input type="tel" name="phone" value={form.phone} onChange={handle} placeholder="+1 234 567 8900" />
+          <PhoneInput
+            value={form.phone}
+            onChange={val => setForm(prev => ({ ...prev, phone: val }))}
+          />
         </div>
 
+        {/* Special Requests — tag system */}
         <div className="form-group">
           <label>{t('common.specialRequests')}</label>
-          <div className="booking-extras">
-            <label className="booking-extras__option">
-              <input
-                type="checkbox"
-                checked={extras.privateCook}
-                onChange={() => toggleExtra('privateCook')}
-              />
-              <span className="booking-extras__icon">👨‍🍳</span>
-              <div className="booking-extras__text">
-                <strong>{t('booking.extraPrivateCook')}</strong>
-                <span>{t('booking.extraPrivateCookDesc')}</span>
-              </div>
-            </label>
-            <label className="booking-extras__option">
-              <input
-                type="checkbox"
-                checked={extras.extraCleaning}
-                onChange={() => toggleExtra('extraCleaning')}
-              />
-              <span className="booking-extras__icon">✨</span>
-              <div className="booking-extras__text">
-                <strong>{t('booking.extraCleaning')}</strong>
-                <span>{t('booking.extraCleaningDesc')}</span>
-              </div>
-            </label>
-            <label className="booking-extras__option">
-              <input
-                type="checkbox"
-                checked={extras.horseRiding}
-                onChange={() => toggleExtra('horseRiding')}
-              />
-              <span className="booking-extras__icon">🐴</span>
-              <div className="booking-extras__text">
-                <strong>{t('booking.extraHorseRiding')}</strong>
-                <span>{t('booking.extraHorseRidingDesc')}</span>
-              </div>
-            </label>
+
+          {/* Selected tags */}
+          {tags.length > 0 && (
+            <div className="tag-selected">
+              {tags.map(tag => (
+                <span key={tag} className="tag tag--selected">
+                  {tag}
+                  <button type="button" className="tag__remove" onClick={() => removeTag(tag)} aria-label={`Remove ${tag}`}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Text input */}
+          <div className="tag-input-wrap">
+            <input
+              type="text"
+              className="tag-input"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={handleTagInput}
+              placeholder="Type a request and press Enter…"
+            />
+            {tagInput.trim() && (
+              <button
+                type="button"
+                className="tag-input__add"
+                onClick={() => { addTag(tagInput); setTagInput(''); }}
+              >Add</button>
+            )}
           </div>
+
+          {/* Suggestions */}
+          <div className="tag-suggestions">
+            {SUGGESTED_TAGS.filter(s => !tags.includes(s)).map(s => (
+              <button
+                key={s}
+                type="button"
+                className="tag tag--suggestion"
+                onClick={() => addTag(s)}
+              >{s}</button>
+            ))}
+          </div>
+
           <textarea
             name="notes"
             value={form.notes}
             onChange={handle}
-            placeholder={t('booking.notesPlaceholder')}
+            placeholder="Any other notes, dietary needs, occasion…"
             className="mt-12"
           />
         </div>
@@ -341,7 +431,7 @@ export default function BookingWidget({ variant = 'light' }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading}>
+        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading || guestOverLimit}>
           {loading ? loadingMsg : t('common.sendEnquiry')}
           {!loading && (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

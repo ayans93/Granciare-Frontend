@@ -209,6 +209,9 @@ export default function Granciare() {
       {/* ── GALLERY SHOWCASE ─────────────────────────────────── */}
       <GalleryShowcase />
 
+      {/* ── LOCATION ─────────────────────────────────────────── */}
+      <LocationSection />
+
       {/* ── GALLERY ──────────────────────────────────────────── */}
       <section className="granciare__gallery">
         <div className="gallery__header container">
@@ -243,27 +246,6 @@ export default function Granciare() {
 
       {albumOpen && <PhotoAlbum onClose={() => setAlbumOpen(false)} />}
 
-      {/* ── OLIVE OIL TEASER ─────────────────────────────────── */}
-      <section className="section granciare__olive-teaser">
-        <div className="container">
-          <div className="olive-teaser">
-            <div className="olive-teaser__img">
-              <img src="/images/olive-oil/teaser.jpeg" alt="Granciare Olive Oil" />
-            </div>
-            <div className="olive-teaser__content">
-              <span className="section-label">{t('granciare.oliveLabel')}</span>
-              <h2 className="section-title">
-                {t('granciare.oliveTitle1')}<br />
-                <em>{t('granciare.oliveTitle2')}</em>
-              </h2>
-              <p className="granciare__body">{t('granciare.oliveTeaserPara1')}</p>
-              <p className="granciare__body mt-16">{t('granciare.oliveTeaserPara2')}</p>
-              <a href="/olive-oil" className="btn btn-primary mt-32">{t('granciare.oliveBtn')}</a>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── TESTIMONIALS ─────────────────────────────────────── */}
       <section className="section granciare__testimonials">
         <div className="container">
@@ -286,8 +268,26 @@ export default function Granciare() {
         </div>
       </section>
 
-      {/* ── LOCATION ─────────────────────────────────────────── */}
-      <LocationSection />
+      {/* ── OLIVE OIL TEASER ─────────────────────────────────── */}
+      <section className="section granciare__olive-teaser">
+        <div className="container">
+          <div className="olive-teaser">
+            <div className="olive-teaser__img">
+              <img src="/images/olive-oil/teaser.jpeg" alt="Granciare Olive Oil" />
+            </div>
+            <div className="olive-teaser__content">
+              <span className="section-label">{t('granciare.oliveLabel')}</span>
+              <h2 className="section-title">
+                {t('granciare.oliveTitle1')}<br />
+                <em>{t('granciare.oliveTitle2')}</em>
+              </h2>
+              <p className="granciare__body">{t('granciare.oliveTeaserPara1')}</p>
+              <p className="granciare__body mt-16">{t('granciare.oliveTeaserPara2')}</p>
+              <a href="/olive-oil" className="btn btn-primary mt-32">{t('granciare.oliveBtn')}</a>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ── BOOKING ──────────────────────────────────────────── */}
       <section className="section granciare__booking" id="book">
