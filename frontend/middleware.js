@@ -316,11 +316,21 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
           body: JSON.stringify({ email, password }),
         });
 
-        if (res.ok) {
+        // Verify we got real JSON back (not the maintenance page intercepting)
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          errEl.textContent = 'Server error — please try again in a moment.';
+          btn.disabled = false;
+          btn.textContent = 'Enter Estate';
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.ok === true) {
           btn.textContent = 'Welcome ✓';
-          window.location.reload();
+          window.location.href = '/';
         } else {
-          const data = await res.json().catch(() => ({}));
           errEl.textContent = data.error || 'Invalid email or password.';
           btn.disabled = false;
           btn.textContent = 'Enter Estate';
@@ -339,6 +349,11 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 
 // ── Middleware handler ──────────────────────────────────────────
 export default function middleware(request) {
+  const url = new URL(request.url);
+
+  // Always let API routes through — matcher exclusions may not work in Vite/non-Next.js
+  if (url.pathname.startsWith('/api/')) return;
+
   // 1. Check for valid admin session cookie — always grants access
   const cookies = getCookies(request);
   if (cookies['granciare_admin'] === SESSION_TOKEN) return;
