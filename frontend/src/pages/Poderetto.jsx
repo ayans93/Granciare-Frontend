@@ -1,14 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from '../i18n/LanguageContext';
 import './Poderetto.css';
 
-const features = [
-  { icon: '🏡', title: 'Private Estate', desc: 'An entirely separate property on the same grounds, designed for ultimate privacy.' },
-  { icon: '🫒', title: 'Grove Access', desc: 'Exclusive access to the western olive grove — the oldest section of the estate.' },
-  { icon: '🍽️', title: 'Shared Dining', desc: 'Optional shared tables with Granciare guests for those who want community.' },
-  { icon: '♾️', title: 'Infinity Pool', desc: 'A dedicated pool with uninterrupted views across the valley to the south.' },
-];
-
 export default function Poderetto() {
+  const { t, ta } = useTranslation();
+  const features = ta('poderetto.features');
+  const timeline = ta('poderetto.timeline');
   const [form, setForm] = useState({ name: '', email: '' });
   const [registered, setRegistered] = useState(false);
 
@@ -30,15 +27,11 @@ export default function Poderetto() {
         <div className="pod-hero__content container">
           <div className="pod-hero__tag">
             <span className="pod-hero__dot" />
-            Opening Soon
+            {t('poderetto.openingSoon')}
           </div>
-          <h1 className="pod-hero__title">
-            Poderetto
-          </h1>
-          <p className="pod-hero__sub">
-            The second chapter of the Granciare estate. A property with its own distinct soul — arriving soon.
-          </p>
-          <a href="#register" className="btn btn-gold mt-32">Register Your Interest</a>
+          <h1 className="pod-hero__title">Poderetto</h1>
+          <p className="pod-hero__sub">{t('poderetto.heroSub')}</p>
+          <a href="#register" className="btn btn-gold mt-32">{t('poderetto.registerInterest')}</a>
         </div>
         <div className="pod-hero__scroll-text">Poderetto · Opening Soon · Poderetto · Opening Soon · </div>
       </section>
@@ -59,39 +52,21 @@ export default function Poderetto() {
               </div>
             </div>
             <div className="pod-teaser__content">
-              <span className="section-label">The Second Chapter</span>
+              <span className="section-label">{t('poderetto.teaserLabel')}</span>
               <h2 className="section-title">
-                Same estate.<br />
-                A different<br />
-                <em>story.</em>
+                {t('poderetto.teaserTitle1')}<br />
+                {t('poderetto.teaserTitle2')}<br />
+                <em>{t('poderetto.teaserTitle3')}</em>
               </h2>
-              <p className="pod-body">
-                Poderetto sits at the northern edge of the estate — quieter, more private, with its own distinct architecture and character. Where Granciare draws from the warmth of central Italian farmhouse tradition, Poderetto has been designed with a lighter touch.
-              </p>
-              <p className="pod-body mt-16">
-                We are not ready to open its doors yet. But for those who want to be first — we'll reach out before anyone else.
-              </p>
+              <p className="pod-body">{t('poderetto.teaserPara1')}</p>
+              <p className="pod-body mt-16">{t('poderetto.teaserPara2')}</p>
               <div className="pod-timeline mt-32">
-                <div className="pod-timeline__item pod-timeline__item--done">
-                  <span className="pod-timeline__dot" />
-                  <span>Design completed</span>
-                </div>
-                <div className="pod-timeline__item pod-timeline__item--done">
-                  <span className="pod-timeline__dot" />
-                  <span>Restoration underway</span>
-                </div>
-                <div className="pod-timeline__item pod-timeline__item--active">
-                  <span className="pod-timeline__dot" />
-                  <span>Finishing & furnishing</span>
-                </div>
-                <div className="pod-timeline__item">
-                  <span className="pod-timeline__dot" />
-                  <span>Soft opening to registered guests</span>
-                </div>
-                <div className="pod-timeline__item">
-                  <span className="pod-timeline__dot" />
-                  <span>Full public launch</span>
-                </div>
+                {timeline.map((item, i) => (
+                  <div key={i} className={`pod-timeline__item ${i < 2 ? 'pod-timeline__item--done' : ''} ${i === 2 ? 'pod-timeline__item--active' : ''}`}>
+                    <span className="pod-timeline__dot" />
+                    <span>{item.text}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -102,8 +77,8 @@ export default function Poderetto() {
       <section className="section pod-features">
         <div className="container">
           <div className="text-center mb-48">
-            <span className="section-label" style={{justifyContent:'center'}}>What to Expect</span>
-            <h2 className="section-title">Designed for discernment</h2>
+            <span className="section-label" style={{justifyContent:'center'}}>{t('poderetto.expectLabel')}</span>
+            <h2 className="section-title">{t('poderetto.expectTitle')}</h2>
           </div>
           <div className="pod-features__grid">
             {features.map(f => (
@@ -122,42 +97,38 @@ export default function Poderetto() {
         <div className="container">
           <div className="pod-register__inner">
             <div className="pod-register__text">
-              <span className="section-label">Be First</span>
+              <span className="section-label">{t('poderetto.beFirstLabel')}</span>
               <h2 className="section-title">
-                Register your<br />interest
+                {t('poderetto.registerTitle1')}<br />{t('poderetto.registerTitle2')}
               </h2>
-              <p className="pod-body">
-                Poderetto will open its doors to a limited number of guests. Those on our list receive first access — before any public launch.
-              </p>
-              <p className="pod-body mt-16">
-                No spam. One email when we're ready. That's the only promise we make.
-              </p>
+              <p className="pod-body">{t('poderetto.registerPara1')}</p>
+              <p className="pod-body mt-16">{t('poderetto.registerPara2')}</p>
             </div>
 
             <div className="pod-register__form-wrap">
               {registered ? (
                 <div className="pod-registered">
                   <div className="pod-registered__icon">✓</div>
-                  <h3>You're on the list.</h3>
-                  <p>We'll reach out personally when Poderetto is ready to welcome its first guests. Thank you for your interest.</p>
+                  <h3>{t('poderetto.onList')}</h3>
+                  <p>{t('poderetto.onListMsg')}</p>
                 </div>
               ) : (
                 <form className="pod-form" onSubmit={submit}>
                   <div className="form-group">
-                    <label>Full Name</label>
-                    <input type="text" name="name" value={form.name} onChange={handle} placeholder="Your name" required />
+                    <label>{t('common.fullName')}</label>
+                    <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.yourName')} required />
                   </div>
                   <div className="form-group">
-                    <label>Email Address</label>
+                    <label>{t('common.email')}</label>
                     <input type="email" name="email" value={form.email} onChange={handle} placeholder="your@email.com" required />
                   </div>
                   <button type="submit" className="btn btn-primary">
-                    Register Interest
+                    {t('poderetto.registerBtn')}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                     </svg>
                   </button>
-                  <p className="pod-form__note">No spam, ever. Just one email when we open.</p>
+                  <p className="pod-form__note">{t('poderetto.formNote')}</p>
                 </form>
               )}
             </div>
@@ -170,10 +141,10 @@ export default function Poderetto() {
         <div className="container">
           <div className="pod-bridge__inner">
             <div>
-              <h3 className="pod-bridge__title">Stay at Granciare in the meantime</h3>
-              <p className="pod-bridge__desc">Granciare is open now. The olive oil experience, the pool, the chef — all waiting.</p>
+              <h3 className="pod-bridge__title">{t('poderetto.bridgeTitle')}</h3>
+              <p className="pod-bridge__desc">{t('poderetto.bridgeDesc')}</p>
             </div>
-            <a href="/" className="btn btn-outline">Book Granciare</a>
+            <a href="/" className="btn btn-outline">{t('common.bookGranciare')}</a>
           </div>
         </div>
       </section>

@@ -19,10 +19,20 @@ import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 
 // ── CORS helper ───────────────────────────────────────────────
-function setCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', 'https://granciare.com');
+function setCors(req, res) {
+  const origin = req.headers.origin || '';
+  const allowed =
+    origin === 'https://granciare.com' ||
+    origin.startsWith('http://localhost') ||
+    origin.includes('.vercel.app');
+
+  res.setHeader(
+    'Access-Control-Allow-Origin',
+    allowed ? origin : 'https://granciare.com'
+  );
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Vary', 'Origin');
 }
 
 // ── Google Sheets: append one row ────────────────────────────
@@ -130,7 +140,7 @@ async function sendNotificationEmail(data) {
 
 // ── Main handler ──────────────────────────────────────────────
 export default async function handler(req, res) {
-  setCors(res);
+  setCors(req, res);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {

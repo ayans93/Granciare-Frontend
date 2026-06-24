@@ -1,52 +1,56 @@
 import { useState } from 'react';
+import { useTranslation } from '../i18n/LanguageContext';
 import './OliveOil.css';
 
-const steps = [
-  {
-    num: '01',
-    title: 'The Grove Walk',
-    desc: 'Begin at dawn among 400-year-old olive trees. Your guide explains the varieties, the harvest cycle, and the micro-climate that makes Umbrian oil singular.',
-    img: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=700&q=80',
-  },
-  {
-    num: '02',
-    title: 'The Harvest',
-    desc: 'Depending on season, you may participate in the harvest itself — hand-picking olives as generations before you have done. A deeply physical, deeply meditative experience.',
-    img: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=700&q=80',
-  },
-  {
-    num: '03',
-    title: 'The Cold Press',
-    desc: 'Inside the mill, watch the olives transformed within hours of picking. The cold-press process extracts oil at its most vibrant — you smell the difference immediately.',
-    img: 'https://images.unsplash.com/photo-1515023115689-589c33041d3c?w=700&q=80',
-  },
-  {
-    num: '04',
-    title: 'The Bottling Plant',
-    desc: 'Our working industrial bottling facility is unlike anything open to guests anywhere in Italy. A behind-the-scenes look at how artisan oil meets modern precision.',
-    img: 'https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=700&q=80',
-  },
-  {
-    num: '05',
-    title: 'The Tasting',
-    desc: 'A guided tasting of three vintages — each poured over warm Umbrian bread. Understand acidity, bitterness, pungency. Leave with a bottle of your own.',
-    img: 'https://images.unsplash.com/photo-1516253593875-bd7ba052fbc5?w=700&q=80',
-  },
-];
-
-const facts = [
-  { number: '400+', label: 'Olive Trees on the Estate' },
-  { number: '5hrs', label: 'Immersive Experience' },
-  { number: '3', label: 'Oil Varieties Produced' },
-  { number: '1', label: 'Bottling Plant in Italy Open to Guests' },
-];
-
 export default function OliveOil() {
+  const { t, ta } = useTranslation();
+  const steps = ta('oliveOil.steps');
+  const facts = ta('oliveOil.facts');
+  const takeaways = ta('oliveOil.takeaways');
+
   const [form, setForm] = useState({ name: '', email: '', date: '', guests: '2', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
-  const submit = e => { e.preventDefault(); setSubmitted(true); };
+
+  const submit = async e => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: '',
+          checkIn: form.date,
+          checkOut: form.date,
+          guests: form.guests,
+          message: `[Olive Oil Experience Enquiry]\nPreferred date: ${form.date}\n\n${form.message}`,
+          source: 'granciare.com — Olive Oil Experience Form',
+        }),
+      });
+      let data = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      }
+      if (!res.ok) {
+        setError(data.error || t('booking.networkError'));
+      } else {
+        setSubmitted(true);
+      }
+    } catch (err) {
+      console.error('Olive oil enquiry error:', err);
+      setError(t('booking.networkError'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="olive-page">
@@ -61,15 +65,13 @@ export default function OliveOil() {
           <div className="olive-hero__overlay" />
         </div>
         <div className="olive-hero__content container">
-          <span className="olive-hero__badge">Agri-Tourism Experience</span>
+          <span className="olive-hero__badge">{t('oliveOil.heroBadge')}</span>
           <h1 className="olive-hero__title">
-            From Grove<br />
-            <em>to Bottle</em>
+            {t('oliveOil.heroTitle1')}<br />
+            <em>{t('oliveOil.heroTitle2')}</em>
           </h1>
-          <p className="olive-hero__sub">
-            The only guest-accessible industrial olive oil bottling experience in Italy. A journey through 400 years of craft.
-          </p>
-          <a href="#enquire" className="btn btn-gold mt-32">Book the Experience</a>
+          <p className="olive-hero__sub">{t('oliveOil.heroSub')}</p>
+          <a href="#enquire" className="btn btn-gold mt-32">{t('oliveOil.heroBtn')}</a>
         </div>
       </section>
 
@@ -78,18 +80,12 @@ export default function OliveOil() {
         <div className="container">
           <div className="olive-intro__grid">
             <div>
-              <span className="section-label">What Makes This Unique</span>
-              <h2 className="section-title">
-                No other property<br />offers this
-              </h2>
+              <span className="section-label">{t('oliveOil.uniqueLabel')}</span>
+              <h2 className="section-title">{t('oliveOil.uniqueTitle')}</h2>
             </div>
             <div>
-              <p className="olive-body">
-                Every luxury estate in Tuscany and Umbria has an olive grove. Many produce oil. Some offer tastings. But not one — not a single property open to guests — has an operational industrial bottling plant that visitors can walk through.
-              </p>
-              <p className="olive-body mt-16">
-                Ours does. And it changes the nature of the experience entirely. This isn't countryside tourism. It's an education in provenance, in craft, in what separates a €6 supermarket olive oil from a €45 estate bottle.
-              </p>
+              <p className="olive-body">{t('oliveOil.uniquePara1')}</p>
+              <p className="olive-body mt-16">{t('oliveOil.uniquePara2')}</p>
             </div>
           </div>
 
@@ -109,10 +105,10 @@ export default function OliveOil() {
       <section className="section olive-steps">
         <div className="container">
           <div className="text-center mb-48">
-            <span className="section-label" style={{justifyContent:'center'}}>The Journey</span>
-            <h2 className="section-title">Five acts, one story</h2>
+            <span className="section-label" style={{justifyContent:'center'}}>{t('oliveOil.journeyLabel')}</span>
+            <h2 className="section-title">{t('oliveOil.journeyTitle')}</h2>
             <p className="section-subtitle" style={{margin:'0 auto'}}>
-              A half-day experience designed to be educational, sensory, and utterly unforgettable.
+              {t('oliveOil.stepsSub')}
             </p>
           </div>
 
@@ -140,10 +136,8 @@ export default function OliveOil() {
           <div className="olive-banner__overlay" />
         </div>
         <div className="container olive-banner__content">
-          <blockquote className="olive-banner__quote">
-            "The bottling plant visit was unlike anything I've done in twenty years of travelling Italy. You simply cannot replicate this experience anywhere else."
-          </blockquote>
-          <cite className="olive-banner__cite">— Carlo R., Milan, Italy</cite>
+          <blockquote className="olive-banner__quote">{t('oliveOil.bannerQuote')}</blockquote>
+          <cite className="olive-banner__cite">{t('oliveOil.bannerCite')}</cite>
         </div>
       </section>
 
@@ -155,19 +149,13 @@ export default function OliveOil() {
               <img src="https://images.unsplash.com/photo-1516253593875-bd7ba052fbc5?w=700&q=80" alt="Olive oil tasting" />
             </div>
             <div>
-              <span className="section-label">What You Leave With</span>
-              <h2 className="section-title">More than a memory</h2>
+              <span className="section-label">{t('oliveOil.takeawayLabel')}</span>
+              <h2 className="section-title">{t('oliveOil.takeawayTitle')}</h2>
               <ul className="olive-takeaway__list">
-                {[
-                  'A 500ml bottle of estate-pressed extra virgin olive oil',
-                  'A certificate of your participation in the harvest',
-                  'A tasting journal to record your sensory notes',
-                  'Access to order directly from the estate at home',
-                  'Knowledge that changes how you cook forever',
-                ].map(item => (
-                  <li key={item}>
+                {takeaways.map((item, i) => (
+                  <li key={i}>
                     <span className="olive-check">✓</span>
-                    {item}
+                    {item.text}
                   </li>
                 ))}
               </ul>
@@ -181,49 +169,54 @@ export default function OliveOil() {
         <div className="container">
           <div className="olive-enquiry__inner">
             <div className="text-center mb-48">
-              <span className="section-label" style={{justifyContent:'center'}}>Book Your Experience</span>
-              <h2 className="section-title">Reserve the Olive Oil Journey</h2>
+              <span className="section-label" style={{justifyContent:'center'}}>{t('oliveOil.enquiryLabel')}</span>
+              <h2 className="section-title">{t('oliveOil.enquiryTitle')}</h2>
               <p className="section-subtitle" style={{margin:'0 auto'}}>
-                The experience runs by appointment for villa guests and select day visitors. Spaces are strictly limited.
+                {t('oliveOil.enquirySub')}
               </p>
             </div>
 
             {submitted ? (
               <div className="olive-success">
                 <div className="olive-success__icon">✓</div>
-                <h3>Enquiry Sent</h3>
-                <p>We'll be in touch within 24 hours to confirm your olive oil experience.</p>
+                <h3>{t('oliveOil.successTitle')}</h3>
+                <p>{t('oliveOil.successMsg')}</p>
               </div>
             ) : (
               <form className="olive-form" onSubmit={submit}>
                 <div className="olive-form__row">
                   <div className="form-group">
-                    <label>Your Name</label>
-                    <input type="text" name="name" value={form.name} onChange={handle} placeholder="Full name" required />
+                    <label>{t('common.yourName')}</label>
+                    <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.fullName')} required />
                   </div>
                   <div className="form-group">
-                    <label>Email Address</label>
+                    <label>{t('common.email')}</label>
                     <input type="email" name="email" value={form.email} onChange={handle} placeholder="your@email.com" required />
                   </div>
                 </div>
                 <div className="olive-form__row">
                   <div className="form-group">
-                    <label>Preferred Date</label>
+                    <label>{t('oliveOil.preferredDate')}</label>
                     <input type="date" name="date" value={form.date} onChange={handle} min={new Date().toISOString().split('T')[0]} required />
                   </div>
                   <div className="form-group">
-                    <label>Number of Guests</label>
+                    <label>{t('oliveOil.numberOfGuests')}</label>
                     <select name="guests" value={form.guests} onChange={handle}>
-                      {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {n===1?'Person':'People'}</option>)}
+                      {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {n===1?t('oliveOil.person'):t('oliveOil.people')}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Message (optional)</label>
+                  <label>{t('common.message')}</label>
                   <textarea name="message" value={form.message} onChange={handle} placeholder="Any dietary requirements, accessibility needs, or questions…" />
                 </div>
-                <button type="submit" className="btn btn-primary">
-                  Send Enquiry
+                {error && (
+                  <div className="booking-widget__error" style={{marginBottom:'12px',padding:'12px 16px',background:'#fff3f3',border:'1px solid #f5c2c2',color:'#c0392b',fontSize:'14px'}}>
+                    {error}
+                  </div>
+                )}
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? t('common.sending') : t('common.sendEnquiry')}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                   </svg>

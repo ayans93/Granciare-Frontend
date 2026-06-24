@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from '../i18n/LanguageContext';
 import './DateRangePicker.css';
 
 const MONTHS = ['January','February','March','April','May','June',
@@ -103,6 +104,7 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
 }
 
 export default function DateRangePicker({ checkIn, checkOut, onChange }) {
+  const { t } = useTranslation();
   const today = startOfDay(new Date());
   const [open, setOpen] = useState(false);
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
@@ -179,16 +181,16 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
       {/* Trigger button */}
       <div className="drp-trigger" onClick={() => setOpen(o => !o)}>
         <div className="drp-trigger__field">
-          <span className="drp-trigger__label">CHECK-IN</span>
+          <span className="drp-trigger__label">{t('common.checkIn')}</span>
           <span className={`drp-trigger__value ${!checkIn ? 'drp-trigger__value--placeholder' : ''}`}>
-            {checkIn ? formatDisplay(checkIn) : 'Select date'}
+            {checkIn ? formatDisplay(checkIn) : t('common.selectDate')}
           </span>
         </div>
         <div className="drp-trigger__divider" />
         <div className="drp-trigger__field">
-          <span className="drp-trigger__label">CHECK-OUT</span>
+          <span className="drp-trigger__label">{t('common.checkOut')}</span>
           <span className={`drp-trigger__value ${!checkOut ? 'drp-trigger__value--placeholder' : ''}`}>
-            {checkOut ? formatDisplay(checkOut) : 'Select date'}
+            {checkOut ? formatDisplay(checkOut) : t('common.selectDate')}
           </span>
         </div>
         <svg className="drp-trigger__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -214,7 +216,7 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
           </div>
 
           {loadingRanges ? (
-            <div className="drp-loading">Checking availability…</div>
+            <div className="drp-loading">{t('booking.checkingAvail')}</div>
           ) : (
             <div className="drp-months">
               <CalendarMonth
@@ -240,9 +242,9 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
 
           {/* Legend */}
           <div className="drp-legend">
-            <span className="drp-legend__item drp-legend__item--booked">Booked</span>
-            <span className="drp-legend__item drp-legend__item--available">Available</span>
-            {checkIn && !checkOut && <span className="drp-legend__hint">Now select check-out date</span>}
+            <span className="drp-legend__item drp-legend__item--booked">{t('booking.booked')}</span>
+            <span className="drp-legend__item drp-legend__item--available">{t('booking.available')}</span>
+            {checkIn && !checkOut && <span className="drp-legend__hint">{t('booking.selectCheckout')}</span>}
           </div>
         </div>
       )}

@@ -1,0 +1,114 @@
+/* ── PRICING ESTIMATOR ───────────────────────────────────────── */
+.pe {
+  border: 1px solid var(--cream-dark);
+  background: var(--cream);
+  padding: 20px 20px 16px;
+  margin-top: 4px;
+}
+
+/* Header */
+.pe__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.pe__label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--charcoal);
+}
+.pe__badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+  background: rgba(160, 82, 45, 0.08);
+  padding: 2px 8px;
+}
+
+/* Season pills */
+.pe__seasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.pe__season {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--warm-white);
+  border: 1px solid var(--cream-dark);
+  font-size: 11px;
+}
+.pe__season-name {
+  color: var(--charcoal);
+  font-weight: 600;
+}
+.pe__season-nights {
+  color: var(--stone);
+}
+.pe__season--high     .pe__season-name { color: var(--terracotta); }
+.pe__season--festive  .pe__season-name { color: #8b6914; }
+.pe__season--moderate .pe__season-name { color: var(--charcoal); }
+.pe__season--low      .pe__season-name { color: var(--stone); }
+
+/* Price rows */
+.pe__range {
+  border-top: 1px solid var(--cream-dark);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pe__range-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pe__range-label {
+  font-size: 12px;
+  color: var(--stone);
+}
+.pe__range-value {
+  font-size: 13px;
+  color: var(--charcoal);
+  font-weight: 500;
+}
+.pe__range-row--estimate {
+  padding: 10px 0;
+  border-top: 1px solid var(--cream-dark);
+  border-bottom: 1px solid var(--cream-dark);
+  margin: 2px 0;
+}
+.pe__range-row--estimate .pe__range-label {
+  font-weight: 600;
+  color: var(--charcoal);
+  font-size: 13px;
+}
+.pe__range-value--highlight {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--charcoal);
+  font-family: var(--font-serif);
+}
+.pe__range-row--meta .pe__range-label,
+.pe__range-meta {
+  font-size: 11px;
+  color: var(--stone);
+}
+
+/* Disclaimer */
+.pe__disclaimer {
+  margin-top: 14px;
+  font-size: 10px;
+  color: var(--stone);
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  text-align: center;
+}

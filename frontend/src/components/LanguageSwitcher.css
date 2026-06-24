@@ -1,0 +1,96 @@
+/* ── LANGUAGE SWITCHER ───────────────────────────────────────── */
+.lang-sw {
+  position: relative;
+}
+
+/* Trigger button */
+.lang-sw__trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  height: 32px;
+}
+.lang-sw__trigger:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #fff;
+}
+
+/* When navbar is scrolled (light background) */
+.navbar--scrolled .lang-sw__trigger {
+  border-color: rgba(40, 35, 30, 0.2);
+  color: var(--charcoal);
+}
+.navbar--scrolled .lang-sw__trigger:hover {
+  border-color: var(--charcoal);
+  color: var(--charcoal);
+}
+
+.lang-sw__flag { font-size: 14px; line-height: 1; }
+.lang-sw__code { font-size: 11px; font-weight: 700; }
+
+/* Chevron */
+.lang-sw__chevron {
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+.lang-sw__chevron--open { transform: rotate(180deg); }
+
+/* Dropdown */
+.lang-sw__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--cream-dark);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  list-style: none;
+  min-width: 160px;
+  z-index: 1000;
+  padding: 4px 0;
+  animation: langDropIn 0.15s ease;
+}
+@keyframes langDropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Option */
+.lang-sw__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--charcoal);
+  transition: background 0.15s;
+}
+.lang-sw__option:hover {
+  background: var(--cream);
+}
+.lang-sw__option--active {
+  background: var(--cream);
+  font-weight: 600;
+}
+.lang-sw__option--active svg {
+  margin-left: auto;
+  color: var(--terracotta);
+}
+.lang-sw__name { flex: 1; }
+
+/* Mobile — show in mobile menu instead of header */
+@media (max-width: 900px) {
+  .lang-sw__dropdown {
+    right: auto;
+    left: 0;
+  }
+}

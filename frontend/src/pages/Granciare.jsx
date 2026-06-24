@@ -2,6 +2,8 @@ import { useState } from 'react';
 import BookingWidget from '../components/BookingWidget';
 import GalleryShowcase from '../components/GalleryShowcase';
 import PhotoAlbum from '../components/PhotoAlbum';
+import LocationSection from '../components/LocationSection';
+import { useTranslation } from '../i18n/LanguageContext';
 import './Granciare.css';
 
 /* ── SVG Icons for amenities ─────────────────────────────── */
@@ -78,16 +80,7 @@ const IconFire = () => (
   </svg>
 );
 
-const amenities = [
-  { Icon: IconPool,   label: 'Private Pool',    desc: 'Full-length pool overlooking the Umbrian hills', color: 'warm' },
-  { Icon: IconOlive,  label: 'Olive Groves',    desc: '400-year-old trees surrounding the estate',     color: 'grey' },
-  { Icon: IconWine,   label: 'Wine Cellar',     desc: 'Curated regional wines for private tastings',   color: 'warm' },
-  { Icon: IconChef,   label: 'Private Chef',    desc: 'Farm-to-table Umbrian cuisine on request',      color: 'grey' },
-  { Icon: IconCar,    label: 'Transfers',       desc: 'Airport & city transfers arranged',             color: 'warm' },
-  { Icon: IconSpa,    label: 'Wellness',        desc: 'In-villa massage and wellness treatments',      color: 'grey' },
-  { Icon: IconGarden, label: 'Organic Garden',  desc: 'Seasonal produce grown on the estate',         color: 'warm' },
-  { Icon: IconFire,   label: 'Fireplace',       desc: 'Stone fireplaces in each living space',        color: 'grey' },
-];
+const AMENITY_ICONS = [IconPool, IconOlive, IconWine, IconChef, IconCar, IconSpa, IconGarden, IconFire];
 
 const gallery = [
   '/images/landscape/gallery-1.jpeg',
@@ -118,6 +111,8 @@ const testimonials = [
 
 export default function Granciare() {
   const [albumOpen, setAlbumOpen] = useState(false);
+  const { t, ta } = useTranslation();
+  const amenities = ta('granciare.amenities').map((a, i) => ({ ...a, Icon: AMENITY_ICONS[i] }));
 
   return (
     <div className="granciare">
@@ -132,21 +127,19 @@ export default function Granciare() {
           <div className="hero__overlay" />
         </div>
         <div className="hero__content container">
-          <div className="hero__badge">Granciare · Umbria, Italy</div>
+          <div className="hero__badge">{t('granciare.heroBadge')}</div>
           <h1 className="hero__title">
-            An Estate Born<br />
-            <em>from the Land</em>
+            {t('granciare.heroTitle1')}<br />
+            <em>{t('granciare.heroTitle2')}</em>
           </h1>
-          <p className="hero__sub">
-            Luxury villa stays amid 400-year-old olive groves. An experience as rare as the oil they produce.
-          </p>
+          <p className="hero__sub">{t('granciare.heroSub')}</p>
           <div className="hero__actions">
-            <a href="#book" className="btn btn-primary">Reserve Your Stay</a>
-            <a href="#story" className="btn btn-outline-light">Discover the Estate</a>
+            <a href="#book" className="btn btn-primary">{t('granciare.heroReserve')}</a>
+            <a href="#story" className="btn btn-outline-light">{t('common.exploreEstate')}</a>
           </div>
         </div>
         <div className="hero__scroll">
-          <span>Scroll</span>
+          <span>{t('granciare.heroScroll')}</span>
           <div className="hero__scroll-line" />
         </div>
       </section>
@@ -156,28 +149,22 @@ export default function Granciare() {
         <div className="container">
           <div className="granciare__intro-grid">
             <div className="granciare__intro-text">
-              <span className="section-label">The Estate</span>
-              <h2 className="section-title">
-                Where ancient stone<br />meets modern luxury
-              </h2>
-              <p className="granciare__body">
-                Granciare is not a hotel. It is a private Italian estate — a place where time slows, where the landscape becomes part of your daily rhythm, and where every detail has been chosen with intention.
-              </p>
-              <p className="granciare__body mt-16">
-                Nestled on the Umbria–Tuscany border, the estate sits within a working olive farm that has been producing extra virgin olive oil for generations. Guests don't simply visit — they immerse themselves in the life of the land.
-              </p>
+              <span className="section-label">{t('granciare.introLabel')}</span>
+              <h2 className="section-title">{t('granciare.introTitle')}</h2>
+              <p className="granciare__body">{t('granciare.introPara1')}</p>
+              <p className="granciare__body mt-16">{t('granciare.introPara2')}</p>
               <div className="granciare__stats">
                 <div className="stat">
-                  <span className="stat__number">400+</span>
-                  <span className="stat__label">Years of Olive Farming</span>
+                  <span className="stat__number">7,000</span>
+                  <span className="stat__label">{t('granciare.statOliveTrees')}</span>
+                </div>
+                <div className="stat">
+                  <span className="stat__number">194 ha</span>
+                  <span className="stat__label">{t('granciare.statHectares')}</span>
                 </div>
                 <div className="stat">
                   <span className="stat__number">8</span>
-                  <span className="stat__label">Guests Maximum</span>
-                </div>
-                <div className="stat">
-                  <span className="stat__number">3</span>
-                  <span className="stat__label">Exclusive Suites</span>
+                  <span className="stat__label">{t('granciare.statBedrooms')}</span>
                 </div>
               </div>
             </div>
@@ -197,10 +184,10 @@ export default function Granciare() {
       <section className="section granciare__amenities">
         <div className="container">
           <div className="text-center mb-48">
-            <span className="section-label" style={{justifyContent:'center'}}>What Awaits You</span>
-            <h2 className="section-title">Every comfort, curated</h2>
+            <span className="section-label" style={{justifyContent:'center'}}>{t('granciare.amenitiesLabel')}</span>
+            <h2 className="section-title">{t('granciare.amenitiesTitle')}</h2>
             <p className="section-subtitle" style={{margin:'0 auto'}}>
-              Granciare is designed to make you forget the world outside.
+              {t('granciare.amenitiesSubtitle')}
             </p>
           </div>
           <div className="amenities__grid">
@@ -226,15 +213,15 @@ export default function Granciare() {
       <section className="granciare__gallery">
         <div className="gallery__header container">
           <div className="gallery__header-text">
-            <span className="section-label">The Estate in Images</span>
-            <h2 className="section-title">A visual journey</h2>
+            <span className="section-label">{t('granciare.galleryLabel')}</span>
+            <h2 className="section-title">{t('granciare.galleryTitle')}</h2>
           </div>
           <button className="gallery__open-btn" onClick={() => setAlbumOpen(true)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
               <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
             </svg>
-            Browse full photo album
+            {t('granciare.galleryBtn')}
           </button>
         </div>
         <div className="gallery__grid">
@@ -247,7 +234,7 @@ export default function Granciare() {
             >
               <img src={src} alt={`Gallery ${i + 1}`} />
               <div className="gallery__item-overlay">
-                <span>View all photos</span>
+                <span>{t('granciare.galleryViewAll')}</span>
               </div>
             </div>
           ))}
@@ -264,18 +251,14 @@ export default function Granciare() {
               <img src="/images/olive-oil/teaser.jpeg" alt="Granciare Olive Oil" />
             </div>
             <div className="olive-teaser__content">
-              <span className="section-label">Included Experience</span>
+              <span className="section-label">{t('granciare.oliveLabel')}</span>
               <h2 className="section-title">
-                The Olive Oil<br />
-                <em>Journey</em>
+                {t('granciare.oliveTitle1')}<br />
+                <em>{t('granciare.oliveTitle2')}</em>
               </h2>
-              <p className="granciare__body">
-                Walk the groves that surround your villa. Witness the harvest. Step inside our working bottling plant for an experience no other luxury property in Italy can offer.
-              </p>
-              <p className="granciare__body mt-16">
-                This is not a tour. It's an education in where exceptional olive oil comes from — told from the inside.
-              </p>
-              <a href="/olive-oil" className="btn btn-primary mt-32">Explore the Experience</a>
+              <p className="granciare__body">{t('granciare.oliveTeaserPara1')}</p>
+              <p className="granciare__body mt-16">{t('granciare.oliveTeaserPara2')}</p>
+              <a href="/olive-oil" className="btn btn-primary mt-32">{t('granciare.oliveBtn')}</a>
             </div>
           </div>
         </div>
@@ -285,17 +268,17 @@ export default function Granciare() {
       <section className="section granciare__testimonials">
         <div className="container">
           <div className="text-center mb-48">
-            <span className="section-label" style={{justifyContent:'center'}}>Guest Stories</span>
-            <h2 className="section-title">Those who've stayed</h2>
+            <span className="section-label" style={{justifyContent:'center'}}>{t('granciare.testimonialLabel')}</span>
+            <h2 className="section-title">{t('granciare.testimonialTitle')}</h2>
           </div>
           <div className="testimonials__grid">
-            {testimonials.map((t, i) => (
+            {testimonials.map((item, i) => (
               <div key={i} className="testimonial-card">
                 <div className="testimonial-card__stars">★★★★★</div>
-                <blockquote className="testimonial-card__quote">"{t.quote}"</blockquote>
+                <blockquote className="testimonial-card__quote">"{item.quote}"</blockquote>
                 <div className="testimonial-card__author">
-                  <span className="testimonial-card__name">{t.name}</span>
-                  <span className="testimonial-card__origin">{t.origin}</span>
+                  <span className="testimonial-card__name">{item.name}</span>
+                  <span className="testimonial-card__origin">{item.origin}</span>
                 </div>
               </div>
             ))}
@@ -303,18 +286,21 @@ export default function Granciare() {
         </div>
       </section>
 
+      {/* ── LOCATION ─────────────────────────────────────────── */}
+      <LocationSection />
+
       {/* ── BOOKING ──────────────────────────────────────────── */}
       <section className="section granciare__booking" id="book">
         <div className="container">
           <div className="granciare__booking-grid">
             <div className="granciare__booking-info">
-              <span className="section-label">Direct Booking</span>
+              <span className="section-label">{t('booking.directLabel')}</span>
               <h2 className="section-title">
-                Reserve<br />Granciare
+                {t('booking.directTitle').split('\n').map((line, i) => (
+                  <span key={i}>{line}{i === 0 && <br />}</span>
+                ))}
               </h2>
-              <p className="granciare__body">
-                All bookings are handled personally by our team. No third-party platforms. No hidden fees. A direct line to the people who care for the estate.
-              </p>
+              <p className="granciare__body">{t('booking.directBody')}</p>
               <div className="contact-options mt-32">
                 <a href="https://wa.me/39000000000" target="_blank" rel="noreferrer" className="contact-option">
                   <span className="contact-option__icon">

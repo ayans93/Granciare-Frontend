@@ -12,7 +12,8 @@
  * Find your current IP: https://whatismyip.com
  */
 
-import { next } from '@vercel/edge';
+// @vercel/edge is not needed for Vite deployments.
+// Returning undefined from Edge Middleware means "pass through" (same as next()).
 
 export const config = {
   matcher: ['/((?!_next|favicon.ico).*)'],
@@ -118,10 +119,10 @@ export default function middleware(request) {
     .filter(Boolean);
 
   // If no whitelist is configured → let everyone through (safe default)
-  if (whitelist.length === 0) return next();
+  if (whitelist.length === 0) return;
 
   // If the visitor's IP is whitelisted → let them through
-  if (ip && whitelist.includes(ip)) return next();
+  if (ip && whitelist.includes(ip)) return;
 
   // Otherwise → show the branded maintenance page
   return new Response(MAINTENANCE_HTML, {

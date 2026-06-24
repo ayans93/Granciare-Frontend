@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from '../i18n/LanguageContext';
 import './Footer.css';
 
 export default function Footer() {
+  const { t } = useTranslation();
   return (
     <footer className="footer">
       <div className="footer__top">
@@ -11,11 +13,9 @@ export default function Footer() {
             <div className="footer__brand">
               <div className="footer__logo">
                 <span className="footer__logo-main">Granciare</span>
-                <span className="footer__logo-sub">Estate · Umbria, Italy</span>
+                <span className="footer__logo-sub">{t('footer.logoSub')}</span>
               </div>
-              <p className="footer__tagline">
-                Where ancient olive groves meet the art of extraordinary living. An estate unlike any other.
-              </p>
+              <p className="footer__tagline">{t('footer.tagline')}</p>
               <div className="footer__socials">
                 <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -32,18 +32,18 @@ export default function Footer() {
 
             {/* Navigation */}
             <div className="footer__col">
-              <h4 className="footer__col-title">Explore</h4>
+              <h4 className="footer__col-title">{t('footer.explore')}</h4>
               <ul className="footer__links">
-                <li><Link to="/">Granciare Villa</Link></li>
-                <li><Link to="/olive-oil">Olive Oil Experience</Link></li>
-                <li><Link to="/poderetto">Poderetto Estate</Link></li>
-                <li><Link to="/our-story">Our Story</Link></li>
+                <li><Link to="/">{t('footer.granciareVilla')}</Link></li>
+                <li><Link to="/olive-oil">{t('footer.oliveOilExp')}</Link></li>
+                <li><Link to="/poderetto">{t('footer.poderettoEstate')}</Link></li>
+                <li><Link to="/our-story">{t('nav.ourStory')}</Link></li>
               </ul>
             </div>
 
             {/* Contact */}
             <div className="footer__col">
-              <h4 className="footer__col-title">Contact</h4>
+              <h4 className="footer__col-title">{t('footer.contact')}</h4>
               <ul className="footer__links">
                 <li>
                   <a href="mailto:info@granciare.com">info@granciare.com</a>
@@ -52,18 +52,18 @@ export default function Footer() {
                   <a href="tel:+390000000000">+39 000 000 0000</a>
                 </li>
                 <li>
-                  <a href="https://wa.me/39000000000" target="_blank" rel="noreferrer">WhatsApp Us</a>
+                  <a href="https://wa.me/39000000000" target="_blank" rel="noreferrer">{t('footer.whatsappUs')}</a>
                 </li>
               </ul>
             </div>
 
             {/* Address */}
             <div className="footer__col">
-              <h4 className="footer__col-title">Location</h4>
+              <h4 className="footer__col-title">{t('footer.location')}</h4>
               <p className="footer__address">
-                Granciare Estate<br />
-                Umbria–Tuscany Border<br />
-                Central Italy
+                {t('footer.address').split('\n').map((line, i, arr) => (
+                  <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                ))}
               </p>
             </div>
           </div>
@@ -72,10 +72,10 @@ export default function Footer() {
 
       <div className="footer__bottom">
         <div className="container">
-          <p className="footer__copy">© {new Date().getFullYear()} Granciare Estate. All rights reserved.</p>
+          <p className="footer__copy">{t('footer.copyright', { year: new Date().getFullYear() })} {t('footer.rights')}</p>
           <div className="footer__legal">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms & Conditions</a>
+            <a href="#">{t('footer.privacy')}</a>
+            <a href="#">{t('footer.termsConditions')}</a>
           </div>
         </div>
       </div>
