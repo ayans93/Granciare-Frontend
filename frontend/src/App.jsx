@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { LanguageProvider } from './i18n/LanguageContext';
+import AdminGate from './components/AdminGate';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Granciare from './pages/Granciare';
@@ -35,8 +36,10 @@ export default function App() {
   return (
     <LanguageProvider>
       <BrowserRouter>
-        <ScrollToTop />
-        <Layout />
+        <AdminGate>
+          <ScrollToTop />
+          <Layout />
+        </AdminGate>
       </BrowserRouter>
     </LanguageProvider>
   );

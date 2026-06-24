@@ -1,0 +1,250 @@
+/* ── AdminGate — maintenance page & login modal ──────────────────
+   Dark luxury aesthetic: matches site palette
+   (#1e1c1a bg, #c9a96e terracotta, #faf8f5 cream)
+───────────────────────────────────────────────────────────────── */
+
+/* Full-screen gate wrapper */
+.gate {
+  min-height: 100svh;
+  background: #1e1c1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 24px;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #faf8f5;
+  position: relative;
+}
+
+/* ── Admin button (top-right) ── */
+.gate__admin-btn {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  background: transparent;
+  border: 1px solid rgba(201, 169, 110, 0.4);
+  color: rgba(201, 169, 110, 0.7);
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  z-index: 10;
+}
+
+.gate__admin-btn:hover {
+  border-color: #c9a96e;
+  color: #c9a96e;
+  background: rgba(201, 169, 110, 0.06);
+}
+
+/* ── Main content ── */
+.gate__eyebrow {
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #c9a96e;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.gate__title {
+  font-size: clamp(48px, 10vw, 80px);
+  font-weight: 400;
+  line-height: 1;
+  color: #faf8f5;
+  margin-bottom: 6px;
+}
+
+.gate__subtitle {
+  font-size: clamp(16px, 3vw, 20px);
+  font-style: italic;
+  color: #c9a96e;
+  font-family: Georgia, serif;
+  margin-bottom: 40px;
+}
+
+.gate__divider {
+  width: 48px;
+  height: 1.5px;
+  background: #c9a96e;
+  opacity: 0.7;
+  margin: 0 auto 40px;
+}
+
+.gate__message {
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: clamp(13px, 2vw, 15px);
+  line-height: 1.9;
+  color: rgba(250, 248, 245, 0.55);
+  max-width: 400px;
+}
+
+.gate__footer {
+  position: fixed;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(250, 248, 245, 0.22);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ── Modal overlay ── */
+.gate__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.82);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+/* ── Modal box ── */
+.gate__modal {
+  background: #2a2724;
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 380px;
+  text-align: left;
+  position: relative;
+}
+
+.gate__close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: none;
+  border: none;
+  color: rgba(250, 248, 245, 0.35);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 6px;
+  transition: color 0.15s;
+  font-family: Georgia, serif;
+}
+
+.gate__close:hover {
+  color: #faf8f5;
+}
+
+.gate__modal-eyebrow {
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #c9a96e;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.gate__modal-title {
+  font-size: 22px;
+  font-weight: 400;
+  color: #faf8f5;
+  margin-bottom: 28px;
+  font-family: Georgia, serif;
+}
+
+/* ── Form fields ── */
+.gate__field {
+  margin-bottom: 16px;
+}
+
+.gate__field label {
+  display: block;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 245, 0.45);
+  margin-bottom: 7px;
+}
+
+.gate__field input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  color: #faf8f5;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 14px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.gate__field input::placeholder {
+  color: rgba(250, 248, 245, 0.25);
+}
+
+.gate__field input:focus {
+  border-color: #c9a96e;
+}
+
+/* ── Submit button ── */
+.gate__submit {
+  width: 100%;
+  margin-top: 8px;
+  background: #c9a96e;
+  color: #1e1c1a;
+  border: none;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 14px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  border-radius: 0;
+}
+
+.gate__submit:hover:not(:disabled) {
+  background: #d4b87a;
+}
+
+.gate__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Error message ── */
+.gate__error {
+  margin-top: 14px;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 12px;
+  color: #e07070;
+  min-height: 18px;
+  text-align: center;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .gate__modal {
+    padding: 32px 24px;
+  }
+
+  .gate__admin-btn {
+    top: 16px;
+    right: 16px;
+  }
+}
