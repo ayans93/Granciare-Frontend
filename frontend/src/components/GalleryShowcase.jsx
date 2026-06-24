@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '../i18n/LanguageContext';
 import './GalleryShowcase.css';
 
 const showcases = [
@@ -237,7 +238,7 @@ function Lightbox({ showcase, startIndex, onClose }) {
   );
 }
 
-function ShowcaseCard({ showcase }) {
+function ShowcaseCard({ showcase, t }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxStart, setLightboxStart] = useState(0);
 
@@ -262,7 +263,7 @@ function ShowcaseCard({ showcase }) {
                 <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
                 <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
               </svg>
-              View all {showcase.images.length} photos
+              {t('granciare.showcaseViewAll', { n: showcase.images.length })}
             </span>
           </div>
           <div className="showcase-card__badge"><span>{showcase.tag}</span></div>
@@ -279,7 +280,7 @@ function ShowcaseCard({ showcase }) {
               <img src={src} alt={`${showcase.name} ${i + 2}`} loading="lazy" />
               {i === 2 && remaining > 0 && (
                 <div className="showcase-card__thumb-more">
-                  <span>+{remaining} more</span>
+                  <span>{t('granciare.showcaseMore', { n: remaining })}</span>
                 </div>
               )}
             </div>
@@ -305,17 +306,25 @@ function ShowcaseCard({ showcase }) {
 }
 
 export default function GalleryShowcase() {
+  const { t, ta } = useTranslation();
+  // Get translated card texts and merge with the static image data
+  const showcaseTexts = ta('granciare.showcase');
+  const mergedShowcases = showcases.map((s, i) => ({
+    ...s,
+    name: showcaseTexts[i]?.name ?? s.name,
+    tag:  showcaseTexts[i]?.tag  ?? s.tag,
+    desc: showcaseTexts[i]?.desc ?? s.desc,
+  }));
+
   return (
     <section className="section granciare__showcase-section">
       <div className="container">
-        <span className="section-label">Explore the Estate</span>
-        <h2 className="section-title">Life at Granciare</h2>
-        <p className="section-subtitle mb-48">
-          From ancient landscape to private pool — every corner of the estate is yours to discover.
-        </p>
+        <span className="section-label">{t('granciare.showcaseLabel')}</span>
+        <h2 className="section-title">{t('granciare.showcaseTitle')}</h2>
+        <p className="section-subtitle mb-48">{t('granciare.showcaseSub')}</p>
         <div className="showcase__grid">
-          {showcases.map(s => (
-            <ShowcaseCard key={s.name} showcase={s} />
+          {mergedShowcases.map(s => (
+            <ShowcaseCard key={s.name} showcase={s} t={t} />
           ))}
         </div>
       </div>
