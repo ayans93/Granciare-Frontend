@@ -21,11 +21,11 @@
 /* ── Admin button (top-right) ── */
 .gate__admin-btn {
   position: fixed;
-  top: 20px;
-  right: 24px;
-  background: transparent;
-  border: 1px solid rgba(201, 169, 110, 0.4);
-  color: rgba(201, 169, 110, 0.7);
+  top: 24px;
+  right: 28px;
+  background: rgba(201, 169, 110, 0.12);
+  border: 1px solid rgba(201, 169, 110, 0.75);
+  color: #c9a96e;
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
