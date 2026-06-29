@@ -1,9 +1,5 @@
-/* ── AdminGate — maintenance page & login modal ──────────────────
-   Dark luxury aesthetic: matches site palette
-   (#1e1c1a bg, #c9a96e terracotta, #faf8f5 cream)
-───────────────────────────────────────────────────────────────── */
+/* ── AdminGate ─────────────────────────────────────────────────── */
 
-/* Full-screen gate wrapper */
 .gate {
   min-height: 100svh;
   background: #1e1c1a;
@@ -11,91 +7,102 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 40px 24px;
   font-family: Georgia, 'Times New Roman', serif;
   color: #faf8f5;
+  padding: 60px 24px 80px;
   position: relative;
-}
-
-/* ── Admin button (top-right) ── */
-.gate__admin-btn {
-  position: fixed;
-  top: 24px;
-  right: 28px;
-  background: rgba(201, 169, 110, 0.12);
-  border: 1px solid rgba(201, 169, 110, 0.75);
-  color: #c9a96e;
-  font-family: 'Calibri', Arial, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
-  z-index: 10;
-}
-
-.gate__admin-btn:hover {
-  border-color: #c9a96e;
-  color: #c9a96e;
-  background: rgba(201, 169, 110, 0.06);
+  text-align: center;
 }
 
 /* ── Main content ── */
+.gate__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .gate__eyebrow {
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.22em;
-  color: #c9a96e;
   text-transform: uppercase;
+  color: #c9a96e;
   margin-bottom: 20px;
 }
 
 .gate__title {
-  font-size: clamp(48px, 10vw, 80px);
+  font-size: clamp(52px, 10vw, 84px);
   font-weight: 400;
   line-height: 1;
   color: #faf8f5;
-  margin-bottom: 6px;
+  margin: 0 0 8px;
 }
 
 .gate__subtitle {
   font-size: clamp(16px, 3vw, 20px);
   font-style: italic;
   color: #c9a96e;
-  font-family: Georgia, serif;
-  margin-bottom: 40px;
+  margin: 0 0 36px;
 }
 
-.gate__divider {
+.gate__rule {
   width: 48px;
   height: 1.5px;
   background: #c9a96e;
-  opacity: 0.7;
-  margin: 0 auto 40px;
+  opacity: 0.65;
+  margin: 0 auto 36px;
 }
 
 .gate__message {
   font-family: 'Calibri', Arial, sans-serif;
   font-size: clamp(13px, 2vw, 15px);
   line-height: 1.9;
-  color: rgba(250, 248, 245, 0.55);
-  max-width: 400px;
+  color: rgba(250, 248, 245, 0.5);
+  max-width: 420px;
+  margin-bottom: 48px;
 }
 
+/* ── Admin login button — inside page content, always visible ── */
+.gate__login-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(201, 169, 110, 0.1);
+  border: 1px solid rgba(201, 169, 110, 0.5);
+  color: #c9a96e;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.gate__login-link:hover {
+  background: rgba(201, 169, 110, 0.18);
+  border-color: #c9a96e;
+  color: #d4b87a;
+}
+
+.gate__login-link svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* ── Footer ── */
 .gate__footer {
-  position: fixed;
+  position: absolute;
   bottom: 28px;
   left: 0;
   right: 0;
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 10px;
   letter-spacing: 0.12em;
-  color: rgba(250, 248, 245, 0.22);
   text-transform: uppercase;
+  color: rgba(250, 248, 245, 0.2);
   text-align: center;
 }
 
@@ -103,21 +110,21 @@
 .gate__overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 10, 10, 0.82);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(8, 8, 8, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 999;
   padding: 24px;
 }
 
 /* ── Modal box ── */
 .gate__modal {
-  background: #2a2724;
-  border: 1px solid rgba(201, 169, 110, 0.2);
-  padding: 40px 36px;
+  background: #272320;
+  border: 1px solid rgba(201, 169, 110, 0.25);
+  padding: 44px 40px;
   width: 100%;
   max-width: 380px;
   text-align: left;
@@ -126,42 +133,38 @@
 
 .gate__close {
   position: absolute;
-  top: 16px;
-  right: 18px;
+  top: 14px;
+  right: 16px;
   background: none;
   border: none;
-  color: rgba(250, 248, 245, 0.35);
-  font-size: 22px;
-  cursor: pointer;
+  color: rgba(250, 248, 245, 0.3);
+  font-size: 24px;
   line-height: 1;
-  padding: 4px 6px;
+  cursor: pointer;
+  padding: 4px 8px;
   transition: color 0.15s;
-  font-family: Georgia, serif;
 }
+.gate__close:hover { color: #faf8f5; }
 
-.gate__close:hover {
-  color: #faf8f5;
-}
-
-.gate__modal-eyebrow {
+.gate__modal-eye {
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: #c9a96e;
   text-transform: uppercase;
-  margin-bottom: 12px;
+  color: #c9a96e;
+  margin-bottom: 10px;
 }
 
 .gate__modal-title {
+  font-family: Georgia, serif;
   font-size: 22px;
   font-weight: 400;
   color: #faf8f5;
-  margin-bottom: 28px;
-  font-family: Georgia, serif;
+  margin-bottom: 30px;
 }
 
-/* ── Form fields ── */
+/* ── Fields ── */
 .gate__field {
   margin-bottom: 16px;
 }
@@ -171,39 +174,33 @@
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(250, 248, 245, 0.45);
+  color: rgba(250, 248, 245, 0.4);
   margin-bottom: 7px;
 }
 
 .gate__field input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(201, 169, 110, 0.2);
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 169, 110, 0.22);
   color: #faf8f5;
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 14px;
   padding: 11px 14px;
   outline: none;
-  transition: border-color 0.2s;
-  -webkit-appearance: none;
   border-radius: 0;
-  box-sizing: border-box;
+  -webkit-appearance: none;
+  transition: border-color 0.2s;
 }
-
-.gate__field input::placeholder {
-  color: rgba(250, 248, 245, 0.25);
-}
-
-.gate__field input:focus {
-  border-color: #c9a96e;
-}
+.gate__field input::placeholder { color: rgba(250, 248, 245, 0.22); }
+.gate__field input:focus { border-color: #c9a96e; }
 
 /* ── Submit button ── */
 .gate__submit {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 10px;
   background: #c9a96e;
   color: #1e1c1a;
   border: none;
@@ -217,34 +214,19 @@
   transition: background 0.2s, opacity 0.2s;
   border-radius: 0;
 }
+.gate__submit:hover:not(:disabled) { background: #d4b87a; }
+.gate__submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.gate__submit:hover:not(:disabled) {
-  background: #d4b87a;
-}
-
-.gate__submit:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* ── Error message ── */
+/* ── Error ── */
 .gate__error {
   margin-top: 14px;
   font-family: 'Calibri', Arial, sans-serif;
   font-size: 12px;
   color: #e07070;
-  min-height: 18px;
   text-align: center;
 }
 
-/* ── Responsive ── */
+/* ── Mobile ── */
 @media (max-width: 480px) {
-  .gate__modal {
-    padding: 32px 24px;
-  }
-
-  .gate__admin-btn {
-    top: 16px;
-    right: 16px;
-  }
+  .gate__modal { padding: 36px 24px; }
 }
