@@ -61,22 +61,69 @@ function italianTimestamp() {
 }
 
 // ── Format: phone → "+91-8777076950" ─────────────────────────
-// PhoneInput sends "+91 8777076950" (dial code + space + number)
+// PhoneInput sends "+91 8777076950" (dial code + space + number).
+// Column is plain-text in Sheets; we use RAW input to avoid formula
+// interpretation (prevents leading-dash artefact).
 function formatPhone(raw) {
   if (!raw) return '—';
   const trimmed = raw.trim();
-  // Replace the first space (between dial code and number) with a dash
-  // e.g. "+91 8777076950" → "+91-8777076950"
-  return trimmed.replace(/^(\+\d{1,4})\s+/, '$1-');
+  if (!trimmed) return '—';
+  // Replace the space between dial code and number with a dash
+  // "+91 9822367690" → "+91-9822367690"
+  const formatted = trimmed.replace(/^(\+\d{1,4})\s+/, '$1-');
+  return formatted;
 }
 
 // ── Format: guests → "12 (9A, 3C)" ──────────────────────────
-function formatGuests(adults, children) {
-  const a = parseInt(adults, 10)  || 0;
-  const c = parseInt(children, 10) || 0;
-  const total = a + c;
-  if (total === 0) return '—';
-  return `${total} (${a}A, ${c}C)`;
+// Handles both new format (adults/children as numbers) and old
+// format (guests as "9 adults, 3 children" string).
+function formatGuests(adults, children, guestsStr) {
+  // New format: separate adult + child counts
+  const a = parseInt(adults,   10);
+  const c = parseInt(children, 10);
+  if (!isNaN(a) && a >= 0) {
+    const safeC = isNaN(c) ? 0 : c;
+    const total = a + safeC;
+    if (total === 0) return '—';
+    return `${total} (${a}A, ${safeC}C)`;
+  }
+  // Old format fallback: "9 adults, 3 children"
+  if (guestsStr) {
+    const am = guestsStr.match(/(\d+)\s*adult/i);
+    const cm = guestsStr.match(/(\d+)\s*child/i);
+    const a2 = am ? parseInt(am[1], 10) : 0;
+    const c2 = cm ? parseInt(cm[1], 10) : 0;
+    const total2 = a2 + c2;
+    if (total2 === 0) return guestsStr; // unknown format — keep raw
+    return `${total2} (${a2}A, ${c2}C)`;
+  }
+  return '—';
+}
+
+// ── Parse special requests + message ─────────────────────────
+// Handles both new format (separate fields) and old format where
+// special requests were embedded in the message string.
+function parseRequests(message, specialRequests) {
+  // New format: both fields provided separately
+  if (specialRequests !== undefined && specialRequests !== null) {
+    return {
+      specialRequests: specialRequests || '—',
+      message:         message         || '—',
+    };
+  }
+  // Old format: "Special requests: X\n\nAdditional notes:\nY"
+  const srMatch   = (message || '').match(/Special requests:\s*([^\n]+)/i);
+  const noteMatch = (message || '').match(/Additional notes:\s*([\s\S]*)/i);
+  if (srMatch) {
+    return {
+      specialRequests: srMatch[1].trim()               || '—',
+      message:         noteMatch ? noteMatch[1].trim() || '—' : '—',
+    };
+  }
+  return {
+    specialRequests: '—',
+    message:         message || '—',
+  };
 }
 
 // ── Google Sheets: append one row to 'Bookings' ──────────────
@@ -91,23 +138,27 @@ async function appendToSheet(data) {
 
   const sheets = google.sheets({ version: 'v4', auth });
 
+  const { specialRequests, message } = parseRequests(data.message, data.specialRequests);
+
   const row = [
-    italianTimestamp(),                          // A: Timestamp (in Italian time)
-    data.name,                                   // B: Name
-    data.email,                                  // C: Email
-    formatPhone(data.phone),                     // D: Phone
-    data.checkIn  || '—',                        // E: Check-in Date
-    data.checkOut || '—',                        // F: Check-out Date
-    formatGuests(data.adults, data.children),    // G: Guests
-    data.specialRequests || '—',                 // H: Special Requests
-    data.message  || '—',                        // I: Message
-    data.source   || 'granciare.com',            // J: Source
+    italianTimestamp(),                                            // A: Timestamp (in Italian time)
+    data.name,                                                     // B: Name
+    data.email,                                                    // C: Email
+    formatPhone(data.phone),                                       // D: Phone
+    data.checkIn  || '—',                                          // E: Check-in Date
+    data.checkOut || '—',                                          // F: Check-out Date
+    formatGuests(data.adults, data.children, data.guests),         // G: Guests
+    specialRequests,                                               // H: Special Requests
+    message,                                                       // I: Message
+    data.source   || 'granciare.com',                              // J: Source
   ];
 
+  // RAW mode: values stored as literal strings — prevents Sheets from
+  // interpreting phone numbers like "+91-9822367690" as formulas.
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range: 'Bookings!A:J',
-    valueInputOption: 'USER_ENTERED',
+    valueInputOption: 'RAW',
     requestBody: { values: [row] },
   });
 }
@@ -197,7 +248,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, email, phone, checkIn, checkOut, adults, children, specialRequests, message, source } = req.body || {};
+  const { name, email, phone, checkIn, checkOut, adults, children, guests, specialRequests, message, source } = req.body || {};
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
@@ -219,9 +270,10 @@ export default async function handler(req, res) {
     phone,
     checkIn,
     checkOut,
-    adults:          adults  ?? 0,
-    children:        children ?? 0,
-    specialRequests: specialRequests || '',
+    adults,          // number (new format) or undefined (old format)
+    children,        // number (new format) or undefined (old format)
+    guests,          // string (old format) or undefined (new format)
+    specialRequests, // string (new format) or undefined (old format)
     message:         message || '',
     source:          source  || 'granciare.com',
   };
