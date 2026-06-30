@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const sheets = google.sheets({ version: 'v4', auth });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Enquiries!E2:F', // columns E (Check-in) and F (Check-out), skip header
+      range: 'Bookings!E2:F', // columns E (Check-in) and F (Check-out), skip header
     });
 
     const rows = response.data.values || [];

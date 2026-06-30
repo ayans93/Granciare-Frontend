@@ -29,7 +29,7 @@ async function getBookings() {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: 'Enquiries!A2:I',   // skip header row, read all data rows
+    range: 'Bookings!A2:J',   // skip header row, read all data rows
   });
 
   return response.data.values || [];
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
   try {
     const rows = await getBookings();
 
-    // Sheet columns: [0]Timestamp [1]Name [2]Email [3]Phone [4]CheckIn [5]CheckOut [6]Guests [7]Message [8]Source
+    // Sheet columns: [0]Timestamp [1]Name [2]Email [3]Phone [4]CheckIn [5]CheckOut [6]Guests [7]SpecialRequests [8]Message [9]Source
     const conflict = rows.find(row => {
       const existIn  = row[4]; // e.g. "2026-06-04"
       const existOut = row[5]; // e.g. "2026-06-16"
