@@ -3,15 +3,27 @@
  *
  * Receives a booking enquiry from the contact form.
  * 1. Validates required fields
- * 2. Appends a row to Google Sheets
+ * 2. Appends a row to the 'Bookings' tab in Google Sheets
  * 3. Sends an email notification to admin@dviu.in
+ *
+ * Bookings sheet columns (A–J):
+ *   A: Timestamp (in Italian time)
+ *   B: Name
+ *   C: Email
+ *   D: Phone           → "+91-8777076950" format
+ *   E: Check-in Date
+ *   F: Check-out Date
+ *   G: Guests          → "12 (9A, 3C)" format
+ *   H: Special Requests
+ *   I: Message
+ *   J: Source
  *
  * Environment variables required (set in Vercel dashboard):
  *   GOOGLE_CLIENT_EMAIL      — service account email
  *   GOOGLE_PRIVATE_KEY       — service account private key (include \n line breaks)
  *   GOOGLE_SHEET_ID          — the spreadsheet ID from the sheet URL
  *   GMAIL_USER               — sender Gmail address (admin@dviu.in)
- *   GMAIL_APP_PASSWORD        — 16-character Gmail App Password
+ *   GMAIL_APP_PASSWORD       — 16-character Gmail App Password
  *   NOTIFY_EMAIL             — recipient email (admin@dviu.in)
  */
 
@@ -26,21 +38,53 @@ function setCors(req, res) {
     origin.startsWith('http://localhost') ||
     origin.includes('.vercel.app');
 
-  res.setHeader(
-    'Access-Control-Allow-Origin',
-    allowed ? origin : 'https://granciare.com'
-  );
+  res.setHeader('Access-Control-Allow-Origin', allowed ? origin : 'https://granciare.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Vary', 'Origin');
 }
 
-// ── Google Sheets: append one row ────────────────────────────
+// ── Format: Italian timestamp (always padded, consistent) ─────
+function italianTimestamp() {
+  const now = new Date();
+  // Format in Italian timezone with zero-padded hours
+  return now.toLocaleString('en-GB', {
+    timeZone: 'Europe/Rome',
+    day:    '2-digit',
+    month:  '2-digit',
+    year:   'numeric',
+    hour:   '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }); // → "01/06/2026, 09:25:14"
+}
+
+// ── Format: phone → "+91-8777076950" ─────────────────────────
+// PhoneInput sends "+91 8777076950" (dial code + space + number)
+function formatPhone(raw) {
+  if (!raw) return '—';
+  const trimmed = raw.trim();
+  // Replace the first space (between dial code and number) with a dash
+  // e.g. "+91 8777076950" → "+91-8777076950"
+  return trimmed.replace(/^(\+\d{1,4})\s+/, '$1-');
+}
+
+// ── Format: guests → "12 (9A, 3C)" ──────────────────────────
+function formatGuests(adults, children) {
+  const a = parseInt(adults, 10)  || 0;
+  const c = parseInt(children, 10) || 0;
+  const total = a + c;
+  if (total === 0) return '—';
+  return `${total} (${a}A, ${c}C)`;
+}
+
+// ── Google Sheets: append one row to 'Bookings' ──────────────
 async function appendToSheet(data) {
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      private_key:  process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     },
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
@@ -48,20 +92,21 @@ async function appendToSheet(data) {
   const sheets = google.sheets({ version: 'v4', auth });
 
   const row = [
-    new Date().toLocaleString('en-GB', { timeZone: 'Europe/Rome' }), // Timestamp (Italy time)
-    data.name,
-    data.email,
-    data.phone || '—',
-    data.checkIn || '—',
-    data.checkOut || '—',
-    data.guests || '—',
-    data.message || '—',
-    data.source || 'granciare.com',
+    italianTimestamp(),                          // A: Timestamp (in Italian time)
+    data.name,                                   // B: Name
+    data.email,                                  // C: Email
+    formatPhone(data.phone),                     // D: Phone
+    data.checkIn  || '—',                        // E: Check-in Date
+    data.checkOut || '—',                        // F: Check-out Date
+    formatGuests(data.adults, data.children),    // G: Guests
+    data.specialRequests || '—',                 // H: Special Requests
+    data.message  || '—',                        // I: Message
+    data.source   || 'granciare.com',            // J: Source
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: 'Enquiries!A:I',
+    range: 'Bookings!A:J',
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
@@ -81,6 +126,8 @@ async function sendNotificationEmail(data) {
     ? `${data.checkIn} → ${data.checkOut}`
     : 'Not specified';
 
+  const guestDisplay = formatGuests(data.adults, data.children);
+
   const html = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #1e1c1a;">
       <div style="background: #1e1c1a; padding: 28px 32px;">
@@ -95,7 +142,7 @@ async function sendNotificationEmail(data) {
       <div style="padding: 32px; background: #faf9f7; border: 1px solid #e8e0d4;">
         <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
           <tr>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; width: 140px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Name</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; width: 160px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Name</td>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; font-weight: 600;">${data.name}</td>
           </tr>
           <tr>
@@ -104,7 +151,7 @@ async function sendNotificationEmail(data) {
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Phone</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${data.phone || '—'}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${formatPhone(data.phone)}</td>
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Dates</td>
@@ -112,8 +159,13 @@ async function sendNotificationEmail(data) {
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Guests</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${data.guests || '—'}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${guestDisplay}</td>
           </tr>
+          ${data.specialRequests ? `
+          <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; vertical-align: top;">Special Requests</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; line-height: 1.7; color: #4a4540;">${data.specialRequests}</td>
+          </tr>` : ''}
           ${data.message ? `
           <tr>
             <td style="padding: 12px 0; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; vertical-align: top;">Message</td>
@@ -124,15 +176,15 @@ async function sendNotificationEmail(data) {
 
       <div style="padding: 20px 32px; background: #f0ebe3; border: 1px solid #e8e0d4; border-top: none;">
         <p style="margin: 0; font-size: 12px; color: #8a7f72; letter-spacing: 0.05em;">
-          Received ${new Date().toLocaleString('en-GB', { timeZone: 'Europe/Rome' })} (Italy time) · granciare.com
+          Received ${italianTimestamp()} (Italian time) · granciare.com
         </p>
       </div>
     </div>
   `;
 
   await transporter.sendMail({
-    from: `"Granciare Estate" <${process.env.GMAIL_USER}>`,
-    to: process.env.NOTIFY_EMAIL,
+    from:    `"Granciare Estate" <${process.env.GMAIL_USER}>`,
+    to:      process.env.NOTIFY_EMAIL,
     subject: `New enquiry from ${data.name} — Granciare Estate`,
     html,
   });
@@ -142,44 +194,43 @@ async function sendNotificationEmail(data) {
 export default async function handler(req, res) {
   setCors(req, res);
 
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // ── Validate required fields
-  const { name, email, phone, checkIn, checkOut, guests, message, source } = req.body || {};
+  const { name, email, phone, checkIn, checkOut, adults, children, specialRequests, message, source } = req.body || {};
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
   }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
 
-  // ── Check all required env vars are present
   const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'NOTIFY_EMAIL'];
-  const missingEnv = requiredEnv.filter(k => !process.env[k]);
+  const missingEnv  = requiredEnv.filter(k => !process.env[k]);
   if (missingEnv.length > 0) {
     console.error('Missing env vars:', missingEnv.join(', '));
     return res.status(500).json({ error: `Server misconfiguration. Missing: ${missingEnv.join(', ')}` });
   }
 
-  const data = { name: name.trim(), email: email.trim(), phone, checkIn, checkOut, guests, message, source };
+  const data = {
+    name:            name.trim(),
+    email:           email.trim(),
+    phone,
+    checkIn,
+    checkOut,
+    adults:          adults  ?? 0,
+    children:        children ?? 0,
+    specialRequests: specialRequests || '',
+    message:         message || '',
+    source:          source  || 'granciare.com',
+  };
 
   try {
-    // Run Sheets + email in parallel for speed
     await Promise.all([
       appendToSheet(data),
       sendNotificationEmail(data),
     ]);
-
     return res.status(200).json({ success: true, message: 'Enquiry received. We will be in touch shortly.' });
   } catch (err) {
     console.error('Enquiry handler error:', err);

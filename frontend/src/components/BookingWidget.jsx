@@ -131,11 +131,10 @@ export default function BookingWidget({ variant = 'light' }) {
           phone: form.phone,
           checkIn: dates.checkIn,
           checkOut: dates.checkOut,
-          guests: `${form.adults} adults, ${form.children} children`,
-          message: [
-            tags.length > 0 ? `Special requests: ${tags.join(', ')}` : '',
-            form.notes ? `Additional notes:\n${form.notes}` : '',
-          ].filter(Boolean).join('\n\n'),
+          adults: form.adults,
+          children: form.children,
+          specialRequests: tags.length > 0 ? tags.join(', ') : '',
+          message: form.notes || '',
           source: 'granciare.com — Booking Form',
         }),
       });
