@@ -13,7 +13,6 @@ const CATEGORIES = [
     label: 'Mansion',
     images: [
       '/images/mansion/mansion-front-vine-arch.jpeg',
-      '/images/mansion/mansion-front-stone-arch-ivy.jpeg',
       '/images/mansion/mansion-front-courtyard.jpeg',
       '/images/mansion/mansion-side-pool-lawn.jpeg',
       '/images/mansion/mansion-side-courtyard-stairs.jpeg',
@@ -80,7 +79,6 @@ const CATEGORIES = [
       '/images/pool/kitchen-marble-diningtable.jpeg',
       '/images/pool/kitchen-stone-countertop.jpeg',
       '/images/pool/kitchen-wooden-cabinets.jpeg',
-      '/images/pool/kitchen-rustic-terracotta.jpeg',
       '/images/pool/kitchen-overhead-view.jpeg',
     ],
   },
