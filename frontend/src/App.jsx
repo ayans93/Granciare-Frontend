@@ -7,6 +7,9 @@ import Granciare from './pages/Granciare';
 import OliveOil from './pages/OliveOil';
 import Poderetto from './pages/Poderetto';
 import OurStory from './pages/OurStory';
+import ComingSoon from './components/ComingSoon';
+
+const COMING_SOON = import.meta.env.VITE_COMING_SOON === 'true';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -32,6 +35,8 @@ function Layout() {
 }
 
 export default function App() {
+  if (COMING_SOON) return <ComingSoon />;
+
   return (
     <LanguageProvider>
       <BrowserRouter>
