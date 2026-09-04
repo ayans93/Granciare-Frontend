@@ -246,7 +246,7 @@ export default function BookingWidget({ variant = 'light' }) {
                 setGuestRaw({ adults: '2', children: '0' });
               }}
             >{t('booking.newEnquiry')}</button>
-            <a href="https://wa.me/39000000000" className="btn btn-primary" target="_blank" rel="noreferrer">{t('booking.whatsappUs')}</a>
+            <a href="https://wa.me/393520730769" className="btn btn-primary" target="_blank" rel="noreferrer">{t('booking.whatsappUs')}</a>
           </div>
         </div>
       </div>
@@ -441,8 +441,8 @@ export default function BookingWidget({ variant = 'light' }) {
 
         <p className="booking-widget__note">
           {t('booking.orReachUs')}{' '}
-          <a href="https://wa.me/39000000000" target="_blank" rel="noreferrer">WhatsApp</a>{' '}·{' '}
-          <a href="tel:+390000000000">Call</a>{' '}·{' '}
+          <a href="https://wa.me/393520730769" target="_blank" rel="noreferrer">WhatsApp</a>{' '}·{' '}
+          <a href="tel:+390763630996">Call</a>{' '}·{' '}
           <a href="mailto:info@granciare.com">Email</a>
         </p>
       </form>

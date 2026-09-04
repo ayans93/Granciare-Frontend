@@ -49,10 +49,10 @@ export default function Footer() {
                   <a href="mailto:info@granciare.com">info@granciare.com</a>
                 </li>
                 <li>
-                  <a href="tel:+390000000000">+39 000 000 0000</a>
+                  <a href="tel:+390763630996">+39 0763 630996</a>
                 </li>
                 <li>
-                  <a href="https://wa.me/39000000000" target="_blank" rel="noreferrer">{t('footer.whatsappUs')}</a>
+                  <a href="https://wa.me/393520730769" target="_blank" rel="noreferrer">WhatsApp: +39 352 0730769</a>
                 </li>
               </ul>
             </div>

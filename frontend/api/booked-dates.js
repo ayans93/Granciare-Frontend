@@ -9,6 +9,11 @@
 
 import { google } from 'googleapis';
 
+// Dates blocked by the estate (not from Google Sheet)
+const STATIC_BLOCKED = [
+  { checkIn: '2026-10-01', checkOut: '2026-12-01' }, // Oct & Nov unavailable
+];
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -41,7 +46,7 @@ export default async function handler(req, res) {
       .filter(row => row[0] && row[1]) // must have both check-in and check-out
       .map(row => ({ checkIn: row[0], checkOut: row[1] }));
 
-    return res.status(200).json({ bookedRanges });
+    return res.status(200).json({ bookedRanges: [...STATIC_BLOCKED, ...bookedRanges] });
   } catch (err) {
     console.error('Booked dates error:', err);
     return res.status(500).json({ error: 'Could not fetch availability.' });
