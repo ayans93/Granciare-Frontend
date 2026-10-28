@@ -11,6 +11,21 @@ import ComingSoon from './components/ComingSoon';
 
 const COMING_SOON = import.meta.env.VITE_COMING_SOON === 'true';
 
+// Preview bypass — visiting /?preview=granciarevip2026 unlocks the full site for this browser
+const PREVIEW_TOKEN = 'granciarevip2026';
+function isPreviewUnlocked() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('preview') === PREVIEW_TOKEN) {
+      localStorage.setItem('_gp', '1');
+      return true;
+    }
+    return localStorage.getItem('_gp') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -35,7 +50,7 @@ function Layout() {
 }
 
 export default function App() {
-  if (COMING_SOON) return <ComingSoon />;
+  if (COMING_SOON && !isPreviewUnlocked()) return <ComingSoon />;
 
   return (
     <LanguageProvider>
