@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BookingWidget from '../components/BookingWidget';
 import GalleryShowcase from '../components/GalleryShowcase';
 import PhotoAlbum from '../components/PhotoAlbum';
 import LocationSection from '../components/LocationSection';
 import { useTranslation } from '../i18n/LanguageContext';
+import { supabase } from '../lib/supabase';
 import './Granciare.css';
 
 /* ── SVG Icons for amenities ─────────────────────────────── */
@@ -91,21 +92,24 @@ const gallery = [
   '/images/pool/gallery-6.jpeg',
 ];
 
-const testimonials = [
+const DEFAULT_TESTIMONIALS = [
   {
-    quote: "Granciare is unlike anything I've experienced. The olive oil tour alone was worth the journey from New York.",
-    name: 'Sarah M.',
-    origin: 'New York, USA',
+    review_text: "Granciare is unlike anything I've experienced. The olive oil tour alone was worth the journey from New York.",
+    reviewer_name: 'Sarah M.',
+    location: 'New York, USA',
+    rating: 5,
   },
   {
-    quote: "Waking up to the Umbrian hills with a private chef preparing breakfast — this is what luxury travel should feel like.",
-    name: 'James & Ellie T.',
-    origin: 'London, UK',
+    review_text: "Waking up to the Umbrian hills with a private chef preparing breakfast — this is what luxury travel should feel like.",
+    reviewer_name: 'James & Ellie T.',
+    location: 'London, UK',
+    rating: 5,
   },
   {
-    quote: "The attention to detail is extraordinary. Every moment felt curated, yet completely authentic.",
-    name: 'Marco F.',
-    origin: 'Milan, Italy',
+    review_text: "The attention to detail is extraordinary. Every moment felt curated, yet completely authentic.",
+    reviewer_name: 'Marco F.',
+    location: 'Milan, Italy',
+    rating: 5,
   },
 ];
 
@@ -113,6 +117,38 @@ export default function Granciare() {
   const [albumOpen, setAlbumOpen] = useState(false);
   const { t, ta } = useTranslation();
   const amenities = ta('granciare.amenities').map((a, i) => ({ ...a, Icon: AMENITY_ICONS[i] }));
+
+  // Testimonials — fetch from Supabase, fall back to defaults
+  const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
+  const [carouselIdx, setCarouselIdx] = useState(0);
+
+  useEffect(() => {
+    supabase
+      .from('testimonials')
+      .select('*')
+      .eq('is_visible', true)
+      .order('sort_order')
+      .order('created_at')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setTestimonials(data);
+          setCarouselIdx(0);
+        }
+      });
+  }, []);
+
+  // Auto-advance carousel every 5 s
+  useEffect(() => {
+    const n = testimonials.length;
+    if (n <= 3) return;
+    const timer = setInterval(() => {
+      setCarouselIdx(i => (i + 1) % n);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [testimonials.length]);
+
+  const prevSlide = () => setCarouselIdx(i => (i - 1 + testimonials.length) % testimonials.length);
+  const nextSlide = () => setCarouselIdx(i => (i + 1) % testimonials.length);
 
   return (
     <div className="granciare">
@@ -253,17 +289,40 @@ export default function Granciare() {
             <span className="section-label" style={{justifyContent:'center'}}>{t('granciare.testimonialLabel')}</span>
             <h2 className="section-title">{t('granciare.testimonialTitle')}</h2>
           </div>
-          <div className="testimonials__grid">
-            {testimonials.map((item, i) => (
-              <div key={i} className="testimonial-card">
-                <div className="testimonial-card__stars">★★★★★</div>
-                <blockquote className="testimonial-card__quote">"{item.quote}"</blockquote>
-                <div className="testimonial-card__author">
-                  <span className="testimonial-card__name">{item.name}</span>
-                  <span className="testimonial-card__origin">{item.origin}</span>
+          <div className="testimonials__carousel">
+            <div
+              className="testimonials__track"
+              style={{ transform: `translateX(-${carouselIdx * (100 / testimonials.length)}%)` }}
+            >
+              {testimonials.map((item, i) => (
+                <div key={i} className="testimonial-card" style={{ flex: `0 0 calc(100% / 3)` }}>
+                  <div className="testimonial-card__stars">
+                    {'★'.repeat(item.rating || 5)}
+                  </div>
+                  <blockquote className="testimonial-card__quote">"{item.review_text}"</blockquote>
+                  <div className="testimonial-card__author">
+                    <span className="testimonial-card__name">{item.reviewer_name}</span>
+                    <span className="testimonial-card__origin">{item.location}</span>
+                  </div>
                 </div>
+              ))}
+            </div>
+            {testimonials.length > 3 && (
+              <div className="testimonials__nav">
+                <button className="testimonials__btn" onClick={prevSlide} aria-label="Previous">‹</button>
+                <div className="testimonials__dots">
+                  {testimonials.map((_, i) => (
+                    <button
+                      key={i}
+                      className={`testimonials__dot${i === carouselIdx ? ' testimonials__dot--active' : ''}`}
+                      onClick={() => setCarouselIdx(i)}
+                      aria-label={`Go to review ${i + 1}`}
+                    />
+                  ))}
+                </div>
+                <button className="testimonials__btn" onClick={nextSlide} aria-label="Next">›</button>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
