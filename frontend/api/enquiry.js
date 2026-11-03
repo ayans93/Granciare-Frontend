@@ -29,6 +29,7 @@
 
 import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 // ── CORS helper ───────────────────────────────────────────────
 function setCors(req, res) {
@@ -278,10 +279,43 @@ export default async function handler(req, res) {
     source:          source  || 'granciare.com',
   };
 
+  // ── Write to Supabase stay_requests ──────────────────────
+  async function saveToSupabase() {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn('Supabase env vars not set — skipping stay_requests insert');
+      return;
+    }
+    const sb = createClient(supabaseUrl, supabaseKey);
+    const a = parseInt(data.adults, 10) || 0;
+    const c = parseInt(data.children, 10) || 0;
+    const { error: sbErr } = await sb.from('stay_requests').insert({
+      name:             data.name,
+      email:            data.email,
+      phone:            data.phone || null,
+      check_in:         data.checkIn  || null,
+      check_out:        data.checkOut || null,
+      adults:           a,
+      children:         c,
+      special_requests: data.specialRequests || null,
+      notes:            data.message || null,
+      status:           'enquiry',
+    });
+    if (sbErr) console.error('Supabase stay_requests insert error:', sbErr.message);
+    else {
+      await sb.from('notifications').insert({
+        type: 'stay_request', title: 'New stay enquiry',
+        body: `${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
+      }).catch(() => {});
+    }
+  }
+
   try {
     await Promise.all([
       appendToSheet(data),
       sendNotificationEmail(data),
+      saveToSupabase(),
     ]);
     return res.status(200).json({ success: true, message: 'Enquiry received. We will be in touch shortly.' });
   } catch (err) {
