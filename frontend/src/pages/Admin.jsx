@@ -939,8 +939,6 @@ function GranciareDetails() {
 // ── SOLIVÉ DETAILS ────────────────────────────────────────
 function SoliveDetails() {
   const DEFAULTS = {
-    solive_rating:        '5',
-    solive_review_count:  '47',
     solive_acidity:       '< 0.2%',
     solive_polyphenols:   '487',
     solive_harvest_year:  '2025',
@@ -983,31 +981,11 @@ function SoliveDetails() {
     )
   }
 
-  const stars = parseInt(config.solive_rating) || 5
-
   return (
     <div style={{ maxWidth: 560, padding: '32px 0' }}>
       <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
-        Edit the Solivé product stats shown on the Olive Oil page — ratings, review count, and chemistry panel.
+        Edit the Solivé chemistry panel shown on the Olive Oil page.
       </p>
-
-      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Ratings</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <span style={{ fontSize: '24px', color: '#2d6a4f', letterSpacing: '2px' }}>
-            {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
-          </span>
-          <span style={{ fontSize: '13px', color: '#888' }}>Preview</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div>
-            {field('solive_rating', 'Star Rating (1–5)')}
-          </div>
-          <div>
-            {field('solive_review_count', 'Number of Reviews')}
-          </div>
-        </div>
-      </div>
 
       <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
         <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Chemistry Panel</h3>

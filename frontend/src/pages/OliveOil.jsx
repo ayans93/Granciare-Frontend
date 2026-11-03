@@ -87,12 +87,11 @@ export default function OliveOil() {
 
   // Site config: Solivé stats
   const [soliveStats, setSoliveStats] = useState({
-    solive_rating: '5', solive_review_count: '47',
     solive_acidity: '< 0.2%', solive_polyphenols: '487',
     solive_harvest_year: '2025', solive_cultivar: 'Moraiolo',
   });
   useEffect(() => {
-    const keys = ['solive_rating','solive_review_count','solive_acidity','solive_polyphenols','solive_harvest_year','solive_cultivar'];
+    const keys = ['solive_acidity','solive_polyphenols','solive_harvest_year','solive_cultivar'];
     supabase.from('site_config').select('key,value').in('key', keys).then(({ data }) => {
       if (data && data.length) {
         const merged = {};
@@ -221,11 +220,6 @@ export default function OliveOil() {
             <div className="product-info">
               <span className="section-label">Solivé Extra Virgin Olive Oil</span>
               <h2 className="section-title" style={{ fontSize: '32px' }}>The 2025 Harvest</h2>
-              <div className="product-stars">
-                <span className="stars">{'★'.repeat(parseInt(soliveStats.solive_rating) || 5)}{'☆'.repeat(5 - (parseInt(soliveStats.solive_rating) || 5))}</span>
-                <span className="review-count">{soliveStats.solive_review_count} reviews</span>
-              </div>
-
               {/* Chemistry panel */}
               <div className="chem-panel">
                 <div className="chem-stat">
@@ -459,39 +453,6 @@ export default function OliveOil() {
         <div className="container olive-banner__content">
           <blockquote className="olive-banner__quote">{t('oliveOil.bannerQuote')}</blockquote>
           <cite className="olive-banner__cite">{t('oliveOil.bannerCite')}</cite>
-        </div>
-      </section>
-
-      {/* ── CUSTOMER REVIEWS ─────────────────────────────── */}
-      <section className="section olive-reviews">
-        <div className="container">
-          <div className="reviews-header">
-            <div>
-              <span className="section-label">Customer Reviews</span>
-              <h2 className="section-title">What our customers say</h2>
-            </div>
-            <div className="reviews-aggregate">
-              <span className="agg-stars">★★★★★</span>
-              <span className="agg-score">4.9</span>
-              <span className="agg-count">47 reviews</span>
-            </div>
-          </div>
-          <div className="reviews-grid">
-            {REVIEWS.map(r => (
-              <div key={r.name} className="review-card">
-                <div className="review-top">
-                  <div className="review-avatar">{r.initials}</div>
-                  <div>
-                    <div className="review-name">{r.name}</div>
-                    <div className="review-location">{r.location}</div>
-                  </div>
-                </div>
-                <div className="review-stars">★★★★★</div>
-                <p className="review-text">"{r.text}"</p>
-                <span className="review-verified">✓ Verified purchase · {r.date}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
