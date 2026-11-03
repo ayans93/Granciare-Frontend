@@ -425,9 +425,15 @@
 .btn-sm--active { border-color: var(--adm-gold); color: var(--adm-gold); background: rgba(184,151,106,0.1); }
 .btn-sm--danger { border-color: transparent; }
 .btn-sm--danger:hover { border-color: var(--adm-danger); color: var(--adm-danger); }
+.btn-sm--save { border-color: var(--adm-gold); color: var(--adm-gold); }
+.btn-sm--save:hover { background: rgba(184,151,106,0.12); }
+.row-actions { display: flex; gap: 6px; align-items: center; }
+.editing-row td { background: var(--adm-hover); }
+.editing-row td input { width: 100%; min-width: 80px; }
 
 /* ── MISC ──────────────────────────────────────────────────── */
-.empty-state { padding: 48px 0; text-align: center; color: var(--adm-text-sub); font-size: 14px; }
+.empty-state { padding: 32px 0 8px; text-align: center; color: var(--adm-text-sub); font-size: 14px; }
+.empty-state-with-action { display: flex; flex-direction: column; align-items: center; padding: 24px 0 16px; gap: 12px; }
 .you-badge { font-size: 10px; font-weight: 600; background: rgba(184,151,106,0.15); color: var(--adm-gold); padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
 
 /* ── RESPONSIVE ────────────────────────────────────────────── */

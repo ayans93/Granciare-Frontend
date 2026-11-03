@@ -34,6 +34,15 @@ const FEATURED_SECTIONS = {
 
 const OIL_QUANTITIES = [1, 5, 12, 25, 50, 100]
 
+const VILLA_PRICING_DEFAULTS = [
+  { label: 'Low Season',          date_from: '2027-01-01', date_to: '2027-03-31', price_per_night: 2000 },
+  { label: 'Spring Shoulder',     date_from: '2027-04-01', date_to: '2027-05-31', price_per_night: 3000 },
+  { label: 'Peak Summer',         date_from: '2027-06-01', date_to: '2027-08-31', price_per_night: 4500 },
+  { label: 'Harvest Season',      date_from: '2027-09-01', date_to: '2027-10-31', price_per_night: 3500 },
+  { label: 'Autumn / Winter',     date_from: '2027-11-01', date_to: '2027-12-20', price_per_night: 2000 },
+  { label: 'Christmas & New Year',date_from: '2027-12-21', date_to: '2028-01-06', price_per_night: 4000 },
+]
+
 // ── HELPERS ────────────────────────────────────────────────
 function fmt(date) {
   if (!date) return '—'
@@ -576,6 +585,8 @@ function Pricing() {
   const [oilSaved, setOilSaved] = useState(false)
   const [newRange, setNewRange] = useState({ label: '', date_from: '', date_to: '', price_per_night: '' })
   const [addingRange, setAddingRange] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editRow, setEditRow] = useState({})
 
   useEffect(() => {
     supabase.from('oil_pricing').select('*').order('quantity').then(({ data }) => {
@@ -619,6 +630,24 @@ function Pricing() {
     fetchVilla()
   }
 
+  async function updateVillaRange(id) {
+    await supabase.from('villa_pricing').update({
+      label: editRow.label,
+      date_from: editRow.date_from,
+      date_to: editRow.date_to,
+      price_per_night: parseFloat(editRow.price_per_night),
+    }).eq('id', id)
+    setEditingId(null)
+    fetchVilla()
+  }
+
+  async function seedVillaDefaults() {
+    if (!confirm('This will add 6 default seasonal pricing ranges for 2027. Continue?')) return
+    await supabase.from('villa_pricing').insert(VILLA_PRICING_DEFAULTS)
+    await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Villa pricing seeded', body: 'Default seasonal ranges added for 2027' })
+    fetchVilla()
+  }
+
   return (
     <div className="tab-content">
       <div className="tab-header"><h2>Pricing Control</h2></div>
@@ -656,15 +685,15 @@ function Pricing() {
         {/* Villa pricing */}
         <div className="pricing-block">
           <div className="pricing-block-header">
-            <h3>Villa Pricing by Date</h3>
-            <button className="btn-primary btn-sm-ver" onClick={() => setAddingRange(a => !a)}>+ Add range</button>
+            <h3>Villa Pricing</h3>
+            <button className="btn-primary btn-sm-ver" onClick={() => { setAddingRange(a => !a); setEditingId(null) }}>+ Add range</button>
           </div>
           <p className="pricing-note">Set price per night for specific date ranges (peak season, shoulder, etc.)</p>
 
           {addingRange && (
             <div className="form-card">
               <div className="form-row">
-                <input placeholder="Label (e.g. Peak summer)" value={newRange.label} onChange={e => setNewRange({...newRange, label: e.target.value})} />
+                <input placeholder="Label (e.g. Peak Summer)" value={newRange.label} onChange={e => setNewRange({...newRange, label: e.target.value})} />
                 <input placeholder="€ per night" type="number" value={newRange.price_per_night} onChange={e => setNewRange({...newRange, price_per_night: e.target.value})} />
               </div>
               <div className="form-row">
@@ -678,19 +707,40 @@ function Pricing() {
             </div>
           )}
 
-          {villaPrices.length === 0 && !addingRange && <p className="empty-state">No pricing ranges set yet.</p>}
+          {villaPrices.length === 0 && !addingRange && (
+            <div className="empty-state-with-action">
+              <p className="empty-state">No pricing ranges set yet.</p>
+              <button className="btn-ghost" onClick={seedVillaDefaults}>Seed default seasonal pricing</button>
+            </div>
+          )}
           {villaPrices.length > 0 && (
             <table className="data-table">
               <thead><tr><th>Label</th><th>From</th><th>To</th><th>€/night</th><th></th></tr></thead>
               <tbody>
                 {villaPrices.map(r => (
-                  <tr key={r.id}>
-                    <td>{r.label}</td>
-                    <td>{fmt(r.date_from)}</td>
-                    <td>{fmt(r.date_to)}</td>
-                    <td>€{r.price_per_night}</td>
-                    <td><button className="btn-sm btn-sm--danger" onClick={() => deleteVillaRange(r.id)}>Remove</button></td>
-                  </tr>
+                  editingId === r.id ? (
+                    <tr key={r.id} className="editing-row">
+                      <td><input value={editRow.label} onChange={e => setEditRow({...editRow, label: e.target.value})} /></td>
+                      <td><input type="date" value={editRow.date_from} onChange={e => setEditRow({...editRow, date_from: e.target.value})} /></td>
+                      <td><input type="date" value={editRow.date_to} onChange={e => setEditRow({...editRow, date_to: e.target.value})} /></td>
+                      <td><input type="number" value={editRow.price_per_night} onChange={e => setEditRow({...editRow, price_per_night: e.target.value})} className="price-input" /></td>
+                      <td className="row-actions">
+                        <button className="btn-sm btn-sm--save" onClick={() => updateVillaRange(r.id)}>Save</button>
+                        <button className="btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={r.id}>
+                      <td>{r.label}</td>
+                      <td>{fmt(r.date_from)}</td>
+                      <td>{fmt(r.date_to)}</td>
+                      <td>€{r.price_per_night}</td>
+                      <td className="row-actions">
+                        <button className="btn-sm" onClick={() => { setEditingId(r.id); setEditRow({...r}); setAddingRange(false) }}>Edit</button>
+                        <button className="btn-sm btn-sm--danger" onClick={() => deleteVillaRange(r.id)}>Remove</button>
+                      </td>
+                    </tr>
+                  )
                 ))}
               </tbody>
             </table>
