@@ -88,7 +88,7 @@ export default function OurStory() {
         </div>
       </section>
 
-      {/* ── THE ESTATE ───────────────────────────────────────── */}
+      {/* ── GRANCIARE ────────────────────────────────────────── */}
       <section className="section story-land">
         <div className="container">
           <div className="story-land__grid">
@@ -97,13 +97,14 @@ export default function OurStory() {
               <h2 className="section-title">{t('ourStory.estateTitle')}</h2>
               <p className="story-body">{t('ourStory.estatePara1')}</p>
               <p className="story-body mt-16">{t('ourStory.estatePara2')}</p>
+              <a href="/" className="btn btn-primary mt-32">Explore Granciare →</a>
             </div>
             <div className="story-land__images">
               <div className="story-land__img-main">
-                <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=700&q=80" alt="Umbrian hills" />
+                <img src="/images/pool/pool-aerial-estate.jpeg" alt="Granciare estate aerial" />
               </div>
               <div className="story-land__img-accent">
-                <img src="https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=400&q=80" alt="Estate in afternoon" />
+                <img src="/images/mansion/mansion-front-courtyard.jpeg" alt="Granciare courtyard" />
               </div>
             </div>
           </div>
@@ -118,7 +119,27 @@ export default function OurStory() {
             <h2 className="section-title">{t('ourStory.oilTitle')}</h2>
             <p className="story-body">{t('ourStory.oilPara1')}</p>
             <p className="story-body mt-16">{t('ourStory.oilPara2')}</p>
-            <a href="/olive-oil" className="btn btn-primary mt-32">{t('ourStory.exploreOlive')}</a>
+            <a href="/olive-oil" className="btn btn-primary mt-32">Explore Solivé →</a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PODERETTO ────────────────────────────────────────── */}
+      <section className="section story-poderetto">
+        <div className="container">
+          <div className="story-land__grid">
+            <div className="story-land__images">
+              <div className="story-land__img-main">
+                <img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=700&q=80" alt="Poderetto Estate" />
+              </div>
+            </div>
+            <div>
+              <span className="section-label">Poderetto · Coming Soon</span>
+              <h2 className="section-title">The Second Chapter</h2>
+              <p className="story-body">Poderetto sits at the northern edge of the estate — quieter, more private, with its own distinct architecture and character. Where Granciare draws from the warmth of central Italian farmhouse tradition, Poderetto has been designed with a lighter touch.</p>
+              <p className="story-body mt-16">Two independent residences among the olive groves, sharing an infinity pool. A place for those who want Umbria without compromise.</p>
+              <a href="/poderetto" className="btn btn-outline mt-32">Explore Poderetto →</a>
+            </div>
           </div>
         </div>
       </section>
@@ -137,7 +158,7 @@ export default function OurStory() {
           <p className="story-cta__sub">{t('ourStory.ctaSub')}</p>
           <div className="story-cta__actions">
             <a href="/" className="btn btn-primary">{t('common.bookGranciare')}</a>
-            <a href="/olive-oil" className="btn btn-outline-light">{t('ourStory.exploreOlive')}</a>
+            <a href="/olive-oil" className="btn btn-outline-light">Order Solivé</a>
           </div>
         </div>
       </section>

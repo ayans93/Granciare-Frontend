@@ -94,7 +94,31 @@
   transition: color var(--transition);
 }
 .navbar__whatsapp:hover { color: var(--olive-lt); }
+.navbar__order {
+  padding: 10px 20px;
+  font-size: 11px;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.85);
+  background: transparent;
+  letter-spacing: 0.08em;
+  transition: all var(--transition);
+}
+.navbar--scrolled .navbar__order {
+  border-color: var(--charcoal);
+  color: var(--charcoal);
+}
+.navbar__order:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: transparent;
+}
 .navbar__book { padding: 11px 24px; font-size: 11px; }
+.navbar__mobile-ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
 
 /* Hamburger */
 .navbar__burger {

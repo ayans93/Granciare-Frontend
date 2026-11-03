@@ -150,6 +150,14 @@ export default function Granciare() {
   const prevSlide = () => setCarouselIdx(i => (i - 1 + testimonials.length) % testimonials.length);
   const nextSlide = () => setCarouselIdx(i => (i + 1) % testimonials.length);
 
+  // Sticky "Book Now" bar
+  const [showSticky, setShowSticky] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowSticky(window.scrollY > 600);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
     <div className="granciare">
 
@@ -157,8 +165,8 @@ export default function Granciare() {
       <section className="hero">
         <div className="hero__bg">
           <img
-            src="/images/mansion/hero.jpeg"
-            alt="Granciare Estate, Umbria"
+            src="/images/pool/pool-aerial-estate.jpeg"
+            alt="Granciare Estate aerial view, Umbria"
           />
           <div className="hero__overlay" />
         </div>
@@ -393,6 +401,17 @@ export default function Granciare() {
           </div>
         </div>
       </section>
+
+      {/* ── STICKY BOOK CTA ──────────────────────────────────── */}
+      <div className={`sticky-book${showSticky ? ' sticky-book--visible' : ''}`}>
+        <div className="sticky-book__inner">
+          <div className="sticky-book__info">
+            <span className="sticky-book__name">Granciare · Allerona, Umbria</span>
+            <span className="sticky-book__sub">Private estate · Up to 16 guests</span>
+          </div>
+          <a href="#book" className="btn btn-primary sticky-book__btn">Book Now →</a>
+        </div>
+      </div>
 
     </div>
   );

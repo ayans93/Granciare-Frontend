@@ -62,8 +62,8 @@ export default function OliveOil() {
   const facts     = ta('oliveOil.facts');
   const takeaways = ta('oliveOil.takeaways');
 
-  // Enquiry form
-  const [form, setForm]           = useState({ name: '', email: '', date: '', guests: '2', message: '' });
+  // Order form
+  const [form, setForm]           = useState({ name: '', phone: '', email: '', address: '', bottles: '5', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
@@ -102,26 +102,23 @@ export default function OliveOil() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/enquiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          phone: '',
-          checkIn: form.date,
-          checkOut: form.date,
-          guests: form.guests,
-          message: `[Olive Oil Experience Enquiry]\nPreferred date: ${form.date}\n\n${form.message}`,
-          source: 'granciare.com — Olive Oil Experience Form',
-        }),
+      const { error: dbError } = await supabase.from('oil_requests').insert({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        quantity: parseInt(form.bottles, 10),
+        message: `Delivery address: ${form.address}${form.message ? '\n\n' + form.message : ''}`,
+        status: 'pending',
       });
-      let data = {};
-      if ((res.headers.get('content-type') || '').includes('application/json')) data = await res.json();
-      if (!res.ok) setError(data.error || t('booking.networkError'));
-      else setSubmitted(true);
-    } catch {
-      setError(t('booking.networkError'));
+      if (dbError) throw new Error(dbError.message);
+      await supabase.from('notifications').insert({
+        type: 'oil_request',
+        title: 'New oil order',
+        body: `${form.name} — ${form.bottles} bottles`,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message || t('booking.networkError'));
     } finally {
       setLoading(false);
     }
@@ -135,7 +132,7 @@ export default function OliveOil() {
       {/* ── HERO ─────────────────────────────────────────── */}
       <section className="olive-hero" ref={heroRef}>
         <div className="olive-hero__bg">
-          <img src="/images/olive-oil/olive-grove-autumn.jpeg" alt="Granciare olive groves in autumn" />
+          <img src="/images/olive-oil/olive-oil-fresh-pressed-flow.jpeg" alt="Solivé first cold-press, Granciare estate" />
           <div className="olive-hero__overlay" />
         </div>
         <div className="olive-hero__content container">
@@ -556,25 +553,29 @@ export default function OliveOil() {
                     <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.fullName')} required />
                   </div>
                   <div className="form-group">
-                    <label>{t('common.email')}</label>
-                    <input type="email" name="email" value={form.email} onChange={handle} placeholder="your@email.com" required />
+                    <label>{t('oliveOil.phoneNumber')}</label>
+                    <input type="tel" name="phone" value={form.phone} onChange={handle} placeholder="+1 234 567 8900" required />
                   </div>
                 </div>
                 <div className="olive-form__row">
                   <div className="form-group">
-                    <label>{t('oliveOil.preferredDate')}</label>
-                    <input type="date" name="date" value={form.date} onChange={handle} min={new Date().toISOString().split('T')[0]} required />
+                    <label>{t('common.email')}</label>
+                    <input type="email" name="email" value={form.email} onChange={handle} placeholder="your@email.com" required />
                   </div>
                   <div className="form-group">
-                    <label>{t('oliveOil.numberOfGuests')}</label>
-                    <select name="guests" value={form.guests} onChange={handle}>
-                      {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {n===1?t('oliveOil.person'):t('oliveOil.people')}</option>)}
+                    <label>{t('oliveOil.numberOfBottles')}</label>
+                    <select name="bottles" value={form.bottles} onChange={handle}>
+                      {[5, 12, 25, 50, 100].map(n => <option key={n} value={n}>{n} bottles</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="form-group">
+                  <label>{t('oliveOil.deliveryAddress')}</label>
+                  <input type="text" name="address" value={form.address} onChange={handle} placeholder="Street, City, Postcode, Country" required />
+                </div>
+                <div className="form-group">
                   <label>{t('common.message')}</label>
-                  <textarea name="message" value={form.message} onChange={handle} placeholder="Any dietary requirements, accessibility needs, or questions…" />
+                  <textarea name="message" value={form.message} onChange={handle} placeholder="Any special instructions, questions, or notes…" rows={3} />
                 </div>
                 {error && (
                   <div className="booking-widget__error" style={{ marginBottom:'12px', padding:'12px 16px', background:'#fff3f3', border:'1px solid #f5c2c2', color:'#c0392b', fontSize:'14px' }}>

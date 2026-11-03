@@ -83,6 +83,9 @@ export default function Navbar() {
             </svg>
             {t('nav.whatsapp')}
           </a>
+          <Link to="/olive-oil#order" className="btn btn-outline navbar__order">
+            {t('nav.orderSolive')}
+          </Link>
           <button onClick={handleBookClick} className="btn btn-primary navbar__book">
             {t('nav.bookStay')}
           </button>
@@ -118,9 +121,14 @@ export default function Navbar() {
           <div className="navbar__mobile-lang">
             <LanguageSwitcher />
           </div>
-          <Link to="/#book" className="btn btn-primary mt-24" onClick={() => setMenuOpen(false)}>
-            {t('nav.bookStay')}
-          </Link>
+          <div className="navbar__mobile-ctas">
+            <Link to="/olive-oil#order" className="btn btn-outline" onClick={() => setMenuOpen(false)}>
+              {t('nav.orderSolive')}
+            </Link>
+            <Link to="/#book" className="btn btn-primary" onClick={() => setMenuOpen(false)}>
+              {t('nav.bookStay')}
+            </Link>
+          </div>
         </nav>
       </div>
     </header>

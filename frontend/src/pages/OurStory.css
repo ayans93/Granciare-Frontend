@@ -183,6 +183,22 @@
   margin: 0 auto;
 }
 
+/* ── PODERETTO ────────────────────────────────────────────── */
+.story-poderetto {
+  background: var(--cream);
+}
+.story-poderetto .story-land__grid {
+  grid-template-columns: 1fr 1.1fr;
+}
+.story-poderetto .story-land__images {
+  height: 440px;
+}
+.story-poderetto .story-land__img-main {
+  width: 100%;
+  left: 0;
+  right: auto;
+}
+
 /* ── CTA ──────────────────────────────────────────────────── */
 .story-cta {
   position: relative;
