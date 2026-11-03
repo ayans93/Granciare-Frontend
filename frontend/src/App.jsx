@@ -7,6 +7,7 @@ import Granciare from './pages/Granciare';
 import OliveOil from './pages/OliveOil';
 import Poderetto from './pages/Poderetto';
 import OurStory from './pages/OurStory';
+import Admin from './pages/Admin';
 import ComingSoon from './components/ComingSoon';
 
 const COMING_SOON = import.meta.env.VITE_COMING_SOON === 'true';
@@ -50,14 +51,19 @@ function Layout() {
 }
 
 export default function App() {
-  if (COMING_SOON && !isPreviewUnlocked()) return <ComingSoon />;
-
   return (
-    <LanguageProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <Layout />
-      </BrowserRouter>
-    </LanguageProvider>
+    <BrowserRouter>
+      <ScrollToTop />
+      <Routes>
+        {/* Admin panel — no navbar/footer, no coming-soon gate */}
+        <Route path="/admin/*" element={<Admin />} />
+        {/* Public site */}
+        <Route path="*" element={
+          COMING_SOON && !isPreviewUnlocked()
+            ? <ComingSoon />
+            : <LanguageProvider><Layout /></LanguageProvider>
+        } />
+      </Routes>
+    </BrowserRouter>
   );
 }
