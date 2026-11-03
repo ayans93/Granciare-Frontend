@@ -124,7 +124,7 @@ export default function OliveOil() {
         phone: form.phone,
         quantity: parseInt(form.bottles, 10),
         message: `Delivery address: ${form.address}${form.message ? '\n\n' + form.message : ''}`,
-        status: 'pending',
+        status: 'enquiry',
       });
       if (dbError) throw new Error(dbError.message);
       await supabase.from('notifications').insert({

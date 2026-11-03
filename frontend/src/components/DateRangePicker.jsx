@@ -7,7 +7,10 @@ const MONTHS = ['January','February','March','April','May','June',
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
 function toYMD(date) {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function parseYMD(str) {
