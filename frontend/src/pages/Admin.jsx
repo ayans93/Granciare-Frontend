@@ -573,6 +573,7 @@ function Pricing() {
   const [oilPrices, setOilPrices] = useState({})
   const [villaPrices, setVillaPrices] = useState([])
   const [oilSaving, setOilSaving] = useState(false)
+  const [oilSaved, setOilSaved] = useState(false)
   const [newRange, setNewRange] = useState({ label: '', date_from: '', date_to: '', price_per_night: '' })
   const [addingRange, setAddingRange] = useState(false)
 
@@ -590,11 +591,18 @@ function Pricing() {
     setVillaPrices(data || [])
   }
 
-  async function saveOilPrice(qty) {
+  async function saveAllOilPrices() {
     setOilSaving(true)
-    await supabase.from('oil_pricing').upsert({ quantity: qty, price_per_bottle: parseFloat(oilPrices[qty]), updated_at: new Date().toISOString() })
-    await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Oil pricing updated', body: `${qty} bottle price updated` })
+    const upserts = OIL_QUANTITIES.map(qty => ({
+      quantity: qty,
+      price_per_bottle: parseFloat(oilPrices[qty]) || 0,
+      updated_at: new Date().toISOString(),
+    }))
+    await supabase.from('oil_pricing').upsert(upserts)
+    await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Oil pricing updated', body: 'All bottle prices saved' })
     setOilSaving(false)
+    setOilSaved(true)
+    setTimeout(() => setOilSaved(false), 2500)
   }
 
   async function addVillaRange() {
@@ -621,7 +629,7 @@ function Pricing() {
           <h3>Olive Oil Bottle Pricing</h3>
           <p className="pricing-note">Set price per bottle for each quantity tier.</p>
           <table className="data-table pricing-table">
-            <thead><tr><th>Quantity</th><th>Price per bottle (€)</th><th></th></tr></thead>
+            <thead><tr><th>Quantity</th><th>Price per bottle (€)</th></tr></thead>
             <tbody>
               {OIL_QUANTITIES.map(qty => (
                 <tr key={qty}>
@@ -634,11 +642,15 @@ function Pricing() {
                       className="price-input"
                     />
                   </td>
-                  <td><button className="btn-sm" onClick={() => saveOilPrice(qty)} disabled={oilSaving}>Save</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="pricing-save-row">
+            <button className="btn-primary" onClick={saveAllOilPrices} disabled={oilSaving}>
+              {oilSaving ? 'Saving…' : oilSaved ? '✓ Saved' : 'Save all prices'}
+            </button>
+          </div>
         </div>
 
         {/* Villa pricing */}

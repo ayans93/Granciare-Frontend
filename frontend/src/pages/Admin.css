@@ -378,6 +378,7 @@
   font-family: inherit; outline: none;
 }
 .price-input:focus { border-color: var(--adm-gold); }
+.pricing-save-row { margin-top: 16px; }
 .pricing-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .btn-sm-ver { padding: 6px 14px; font-size: 12px; }
 
