@@ -97,20 +97,21 @@
 .navbar__order {
   padding: 10px 20px;
   font-size: 11px;
-  border: 1px solid rgba(255,255,255,0.35);
-  color: rgba(255,255,255,0.85);
-  background: transparent;
+  border: 1px solid var(--bottle-green);
+  color: #fff;
+  background: var(--bottle-green);
   letter-spacing: 0.08em;
   transition: all var(--transition);
 }
 .navbar--scrolled .navbar__order {
-  border-color: var(--charcoal);
-  color: var(--charcoal);
+  border-color: var(--bottle-green);
+  color: #fff;
+  background: var(--bottle-green);
 }
 .navbar__order:hover {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: transparent;
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: #fff;
 }
 .navbar__book { padding: 11px 24px; font-size: 11px; }
 .navbar__mobile-ctas {

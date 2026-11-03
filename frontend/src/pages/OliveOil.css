@@ -127,9 +127,8 @@
 .cert-logo-wrap img {
   height: 100%;
   width: auto;
-  max-width: 120px;
+  max-width: 130px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
 }
 
 /* ── PRODUCT SECTION ──────────────────────────────────────── */
@@ -948,3 +947,22 @@
   .hero-trust-row { flex-direction: column; align-items: flex-start; }
   .cert-logos-row { gap: 16px; }
 }
+
+/* ── OLIVE PAGE GREEN THEME ───────────────────────────────── */
+/* Override global terracotta/gold accents with bottle green on the olive oil page */
+.olive-page .btn-primary { background: var(--bottle-green); }
+.olive-page .btn-primary:hover { background: var(--charcoal); }
+.olive-page .btn-gold { background: var(--bottle-green); color: #fff; }
+.olive-page .btn-gold:hover { background: var(--charcoal); color: #fff; }
+.olive-page .section-label::before { background: var(--bottle-green); }
+.olive-page .section-label { color: var(--bottle-green); }
+.olive-page .olive-hero__badge { border-color: rgba(255,255,255,0.4); }
+.olive-page .stars { color: var(--bottle-green); }
+.olive-page .sticky-order__inner { border-top-color: rgba(45,106,79,0.45); }
+.olive-page .sticky-order__btn { background: var(--bottle-green); color: #fff; }
+.olive-page .sticky-order__btn:hover { background: var(--charcoal); color: #fff; }
+.olive-page .harvest-signup__btn { background: var(--bottle-green); }
+.olive-page .harvest-signup__btn:hover { background: var(--charcoal); }
+.olive-page .qty-btn--active { background: var(--bottle-green); border-color: var(--bottle-green); color: #fff; }
+.olive-page .olive-enquiry .btn { background: var(--bottle-green); color: #fff; }
+.olive-page .olive-enquiry .btn:hover { background: var(--charcoal); }

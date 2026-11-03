@@ -11,6 +11,8 @@ const TABS = [
   { id: 'photos',              label: 'Photos',              icon: '📷' },
   { id: 'testimonials',        label: 'Testimonials',        icon: '💬' },
   { id: 'pricing',             label: 'Pricing',             icon: '💶' },
+  { id: 'granciare-details',   label: 'Granciare Details',   icon: '🏛️' },
+  { id: 'solive-details',      label: 'Solivé Details',      icon: '🫒' },
   { id: 'users',               label: 'Users',               icon: '👤' },
 ]
 
@@ -860,6 +862,170 @@ function AdminLogin({ theme, setTheme }) {
   )
 }
 
+// ── GRANCIARE DETAILS ─────────────────────────────────────
+function GranciareDetails() {
+  const DEFAULTS = {
+    granciare_stat1_value: '7,000',
+    granciare_stat1_label: 'Olive Trees',
+    granciare_stat2_value: '194 ha',
+    granciare_stat2_label: 'Estate Hectares',
+    granciare_stat3_value: '8',
+    granciare_stat3_label: 'Bedrooms',
+  }
+  const [config, setConfig] = useState(DEFAULTS)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('site_config').select('key,value').in('key', Object.keys(DEFAULTS))
+      .then(({ data }) => {
+        if (data && data.length) {
+          const merged = { ...DEFAULTS }
+          data.forEach(r => { merged[r.key] = r.value })
+          setConfig(merged)
+        }
+      })
+  }, [])
+
+  async function save() {
+    setSaving(true)
+    const rows = Object.entries(config).map(([key, value]) => ({ key, value }))
+    await supabase.from('site_config').upsert(rows, { onConflict: 'key' })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  function field(key, label) {
+    return (
+      <div className="form-group" style={{ marginBottom: '16px' }}>
+        <label style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888', display: 'block', marginBottom: '6px' }}>{label}</label>
+        <input
+          value={config[key] || ''}
+          onChange={e => setConfig(c => ({ ...c, [key]: e.target.value }))}
+          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 560, padding: '32px 0' }}>
+      <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
+        Edit the three headline stats shown on the Granciare page beneath the intro text.
+      </p>
+      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Stat 1</h3>
+        {field('granciare_stat1_value', 'Value (e.g. 7,000)')}
+        {field('granciare_stat1_label', 'Label (e.g. Olive Trees)')}
+      </div>
+      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Stat 2</h3>
+        {field('granciare_stat2_value', 'Value (e.g. 194 ha)')}
+        {field('granciare_stat2_label', 'Label (e.g. Estate Hectares)')}
+      </div>
+      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Stat 3</h3>
+        {field('granciare_stat3_value', 'Value (e.g. 8)')}
+        {field('granciare_stat3_label', 'Label (e.g. Bedrooms)')}
+      </div>
+      <button className="btn-action" onClick={save} disabled={saving} style={{ minWidth: '140px' }}>
+        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
+      </button>
+    </div>
+  )
+}
+
+// ── SOLIVÉ DETAILS ────────────────────────────────────────
+function SoliveDetails() {
+  const DEFAULTS = {
+    solive_rating:        '5',
+    solive_review_count:  '47',
+    solive_acidity:       '< 0.2%',
+    solive_polyphenols:   '487',
+    solive_harvest_year:  '2025',
+    solive_cultivar:      'Moraiolo',
+  }
+  const [config, setConfig] = useState(DEFAULTS)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('site_config').select('key,value').in('key', Object.keys(DEFAULTS))
+      .then(({ data }) => {
+        if (data && data.length) {
+          const merged = { ...DEFAULTS }
+          data.forEach(r => { merged[r.key] = r.value })
+          setConfig(merged)
+        }
+      })
+  }, [])
+
+  async function save() {
+    setSaving(true)
+    const rows = Object.entries(config).map(([key, value]) => ({ key, value }))
+    await supabase.from('site_config').upsert(rows, { onConflict: 'key' })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  function field(key, label) {
+    return (
+      <div className="form-group" style={{ marginBottom: '16px' }}>
+        <label style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888', display: 'block', marginBottom: '6px' }}>{label}</label>
+        <input
+          value={config[key] || ''}
+          onChange={e => setConfig(c => ({ ...c, [key]: e.target.value }))}
+          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+        />
+      </div>
+    )
+  }
+
+  const stars = parseInt(config.solive_rating) || 5
+
+  return (
+    <div style={{ maxWidth: 560, padding: '32px 0' }}>
+      <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
+        Edit the Solivé product stats shown on the Olive Oil page — ratings, review count, and chemistry panel.
+      </p>
+
+      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Ratings</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          <span style={{ fontSize: '24px', color: '#2d6a4f', letterSpacing: '2px' }}>
+            {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
+          </span>
+          <span style={{ fontSize: '13px', color: '#888' }}>Preview</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            {field('solive_rating', 'Star Rating (1–5)')}
+          </div>
+          <div>
+            {field('solive_review_count', 'Number of Reviews')}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Chemistry Panel</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {field('solive_acidity', 'Acidity (e.g. < 0.2%)')}
+          {field('solive_polyphenols', 'Polyphenols mg/kg (e.g. 487)')}
+          {field('solive_harvest_year', 'Harvest Year (e.g. 2025)')}
+          {field('solive_cultivar', 'Cultivar (e.g. Moraiolo)')}
+        </div>
+      </div>
+
+      <button className="btn-action" onClick={save} disabled={saving} style={{ minWidth: '140px' }}>
+        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
+      </button>
+    </div>
+  )
+}
+
 // ── ADMIN PANEL (authenticated) ───────────────────────────
 function AdminPanel({ session, theme, setTheme }) {
   const [activeTab, setActiveTab] = useState('stay-requests')
@@ -877,6 +1043,8 @@ function AdminPanel({ session, theme, setTheme }) {
     'photos':             <Photos />,
     'testimonials':       <Testimonials />,
     'pricing':            <Pricing />,
+    'granciare-details':  <GranciareDetails />,
+    'solive-details':     <SoliveDetails />,
     'users':              <Users adminName={adminName} />,
   }
 

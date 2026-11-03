@@ -10,7 +10,7 @@ export default function BookingWidget({ variant = 'light' }) {
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
   const [form, setForm] = useState({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
   const [guestRaw, setGuestRaw] = useState({ adults: '2', children: '0' });
-  const [tags, setTags] = useState([]);
+  const [tags, setTags] = useState(['Olive Oil Tour']);
   const [tagInput, setTagInput] = useState('');
 
   const MAX_GUESTS = 16;

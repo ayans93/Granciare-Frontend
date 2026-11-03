@@ -13,6 +13,8 @@
   --olive-lt:      #8A9B6A;
   --gold:          #C9A96E;
   --gold-lt:       #DFC08A;
+  --bottle-green:     #2d6a4f;
+  --bottle-green-lt:  #3d8b68;
   --stone:         #9B9188;
   --stone-lt:      #C4BAB0;
 
@@ -75,6 +77,8 @@ h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 500; line-height: 
 .btn-outline-light:hover { background: #fff; color: var(--charcoal); }
 .btn-gold { background: var(--gold); color: var(--charcoal); }
 .btn-gold:hover { background: var(--charcoal); color: #fff; }
+.btn-olive-green { background: var(--bottle-green); color: #fff; }
+.btn-olive-green:hover { background: var(--charcoal); color: #fff; }
 
 /* ─── Section Labels ─────────────────────────────────────── */
 .section-label {

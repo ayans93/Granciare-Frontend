@@ -150,6 +150,23 @@ export default function Granciare() {
   const prevSlide = () => setCarouselIdx(i => (i - 1 + testimonials.length) % testimonials.length);
   const nextSlide = () => setCarouselIdx(i => (i + 1) % testimonials.length);
 
+  // Site config stats (fetched from Supabase site_config table)
+  const [gStats, setGStats] = useState({
+    granciare_stat1_value: '7,000', granciare_stat1_label: 'Olive Trees',
+    granciare_stat2_value: '194 ha', granciare_stat2_label: 'Estate Hectares',
+    granciare_stat3_value: '8', granciare_stat3_label: 'Bedrooms',
+  });
+  useEffect(() => {
+    const keys = ['granciare_stat1_value','granciare_stat1_label','granciare_stat2_value','granciare_stat2_label','granciare_stat3_value','granciare_stat3_label'];
+    supabase.from('site_config').select('key,value').in('key', keys).then(({ data }) => {
+      if (data && data.length) {
+        const merged = { ...gStats };
+        data.forEach(r => { merged[r.key] = r.value; });
+        setGStats(merged);
+      }
+    });
+  }, []);
+
   // Sticky "Book Now" bar
   const [showSticky, setShowSticky] = useState(false);
   useEffect(() => {
@@ -199,16 +216,16 @@ export default function Granciare() {
               <p className="granciare__body mt-16">{t('granciare.introPara2')}</p>
               <div className="granciare__stats">
                 <div className="stat">
-                  <span className="stat__number">7,000</span>
-                  <span className="stat__label">{t('granciare.statOliveTrees')}</span>
+                  <span className="stat__number">{gStats.granciare_stat1_value}</span>
+                  <span className="stat__label">{gStats.granciare_stat1_label}</span>
                 </div>
                 <div className="stat">
-                  <span className="stat__number">194 ha</span>
-                  <span className="stat__label">{t('granciare.statHectares')}</span>
+                  <span className="stat__number">{gStats.granciare_stat2_value}</span>
+                  <span className="stat__label">{gStats.granciare_stat2_label}</span>
                 </div>
                 <div className="stat">
-                  <span className="stat__number">8</span>
-                  <span className="stat__label">{t('granciare.statBedrooms')}</span>
+                  <span className="stat__number">{gStats.granciare_stat3_value}</span>
+                  <span className="stat__label">{gStats.granciare_stat3_label}</span>
                 </div>
               </div>
             </div>

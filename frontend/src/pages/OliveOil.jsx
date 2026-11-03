@@ -85,6 +85,23 @@ export default function OliveOil() {
   const [harvestEmail, setHarvestEmail]         = useState('');
   const [harvestDone, setHarvestDone]           = useState(false);
 
+  // Site config: Solivé stats
+  const [soliveStats, setSoliveStats] = useState({
+    solive_rating: '5', solive_review_count: '47',
+    solive_acidity: '< 0.2%', solive_polyphenols: '487',
+    solive_harvest_year: '2025', solive_cultivar: 'Moraiolo',
+  });
+  useEffect(() => {
+    const keys = ['solive_rating','solive_review_count','solive_acidity','solive_polyphenols','solive_harvest_year','solive_cultivar'];
+    supabase.from('site_config').select('key,value').in('key', keys).then(({ data }) => {
+      if (data && data.length) {
+        const merged = {};
+        data.forEach(r => { merged[r.key] = r.value; });
+        setSoliveStats(s => ({ ...s, ...merged }));
+      }
+    });
+  }, []);
+
   // Sticky CTA
   const [showSticky, setShowSticky] = useState(false);
   const heroRef = useRef(null);
@@ -205,29 +222,29 @@ export default function OliveOil() {
               <span className="section-label">Solivé Extra Virgin Olive Oil</span>
               <h2 className="section-title" style={{ fontSize: '32px' }}>The 2025 Harvest</h2>
               <div className="product-stars">
-                <span className="stars">★★★★★</span>
-                <span className="review-count">47 reviews</span>
+                <span className="stars">{'★'.repeat(parseInt(soliveStats.solive_rating) || 5)}{'☆'.repeat(5 - (parseInt(soliveStats.solive_rating) || 5))}</span>
+                <span className="review-count">{soliveStats.solive_review_count} reviews</span>
               </div>
 
               {/* Chemistry panel */}
               <div className="chem-panel">
                 <div className="chem-stat">
-                  <span className="chem-val">&lt;&nbsp;0.2%</span>
+                  <span className="chem-val">{soliveStats.solive_acidity}</span>
                   <span className="chem-key">Acidity</span>
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
-                  <span className="chem-val">487</span>
+                  <span className="chem-val">{soliveStats.solive_polyphenols}</span>
                   <span className="chem-key">Polyphenols mg/kg</span>
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
-                  <span className="chem-val">2025</span>
+                  <span className="chem-val">{soliveStats.solive_harvest_year}</span>
                   <span className="chem-key">Harvest Year</span>
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
-                  <span className="chem-val" style={{ fontSize: '14px', paddingTop: '4px' }}>Moraiolo</span>
+                  <span className="chem-val" style={{ fontSize: '14px', paddingTop: '4px' }}>{soliveStats.solive_cultivar}</span>
                   <span className="chem-key">Cultivar</span>
                 </div>
               </div>
