@@ -1,14 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { supabase } from '../lib/supabase';
 import './OliveOil.css';
 
-const QTY_TIERS = [
+// Fallback prices if Supabase hasn't loaded yet
+const DEFAULT_QTY_TIERS = [
   { qty: 5,   label: '5 bottles',   perBottle: 32,    total: 160,  save: null },
   { qty: 12,  label: '12 bottles',  perBottle: 29.50, total: 354,  save: 'Save 8%' },
   { qty: 24,  label: '24 bottles',  perBottle: 28,    total: 672,  save: 'Save 13%' },
   { qty: 48,  label: '48 bottles',  perBottle: 26,    total: 1248, save: 'Save 19%' },
   { qty: 100, label: '100 bottles', perBottle: 24,    total: 2400, save: 'Save 25%' },
 ];
+
+function buildTiers(rows) {
+  if (!rows || rows.length === 0) return DEFAULT_QTY_TIERS;
+  const sorted = [...rows].sort((a, b) => a.quantity - b.quantity);
+  const basePrice = sorted[0].price_per_bottle;
+  return sorted.map(r => ({
+    qty:        r.quantity,
+    label:      `${r.quantity} bottle${r.quantity > 1 ? 's' : ''}`,
+    perBottle:  r.price_per_bottle,
+    total:      Math.round(r.quantity * r.price_per_bottle * 100) / 100,
+    save:       r.price_per_bottle < basePrice
+                  ? `Save ${Math.round((1 - r.price_per_bottle / basePrice) * 100)}%`
+                  : null,
+  }));
+}
 
 const GALLERY_IMGS = [
   { src: '/images/olive-oil/solivé-bottle-500ml.png',             alt: 'Solivé 500ml bottle' },
@@ -51,6 +68,14 @@ export default function OliveOil() {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  // Dynamic pricing from Supabase
+  const [qtyTiers, setQtyTiers] = useState(DEFAULT_QTY_TIERS);
+  useEffect(() => {
+    supabase.from('oil_pricing').select('*').order('quantity').then(({ data }) => {
+      if (data && data.length > 0) setQtyTiers(buildTiers(data));
+    });
+  }, []);
 
   // Product interactions
   const [selectedQtyIdx, setSelectedQtyIdx] = useState(0);
@@ -102,7 +127,7 @@ export default function OliveOil() {
     }
   };
 
-  const tier = QTY_TIERS[selectedQtyIdx];
+  const tier = qtyTiers[selectedQtyIdx] || qtyTiers[0];
 
   return (
     <div className="olive-page">
@@ -230,7 +255,7 @@ export default function OliveOil() {
               <div className="qty-selector">
                 <span className="qty-selector__label">Select quantity</span>
                 <div className="qty-presets">
-                  {QTY_TIERS.map((tier, i) => (
+                  {qtyTiers.map((tier, i) => (
                     <button
                       key={tier.qty}
                       className={`qty-btn${i === selectedQtyIdx ? ' qty-btn--active' : ''}`}
