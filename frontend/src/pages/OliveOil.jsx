@@ -64,10 +64,13 @@ export default function OliveOil() {
 
   // Order form
   const [form, setForm]           = useState({ name: '', phone: '', email: '', address: '', bottles: '5', message: '' });
+  const [customBottles, setCustomBottles] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const isCustomBottles = form.bottles === 'custom';
+  const resolvedBottles = isCustomBottles ? customBottles : form.bottles;
 
   // Dynamic pricing from Supabase
   const [qtyTiers, setQtyTiers] = useState(DEFAULT_QTY_TIERS);
@@ -122,7 +125,7 @@ export default function OliveOil() {
         name: form.name,
         email: form.email,
         phone: form.phone,
-        quantity: parseInt(form.bottles, 10),
+        quantity: parseInt(resolvedBottles, 10) || 0,
         message: `Delivery address: ${form.address}${form.message ? '\n\n' + form.message : ''}`,
         status: 'enquiry',
       });
@@ -130,7 +133,7 @@ export default function OliveOil() {
       await supabase.from('notifications').insert({
         type: 'oil_request',
         title: 'New oil order',
-        body: `${form.name} — ${form.bottles} bottles`,
+        body: `${form.name} — ${resolvedBottles} bottles`,
       });
       setSubmitted(true);
     } catch (err) {
@@ -544,7 +547,20 @@ export default function OliveOil() {
                     <label>{t('oliveOil.numberOfBottles')}</label>
                     <select name="bottles" value={form.bottles} onChange={handle}>
                       {[5, 12, 25, 50, 100].map(n => <option key={n} value={n}>{n} bottles</option>)}
+                      <option value="custom">Custom quantity…</option>
                     </select>
+                    {isCustomBottles && (
+                      <input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={customBottles}
+                        onChange={e => setCustomBottles(e.target.value)}
+                        placeholder="Enter number of bottles"
+                        required
+                        style={{ marginTop: '10px' }}
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="form-group">
@@ -560,7 +576,7 @@ export default function OliveOil() {
                     {error}
                   </div>
                 )}
-                <button type="submit" className="btn btn-primary" disabled={loading}>
+                <button type="submit" className="btn btn-primary" disabled={loading || (isCustomBottles && !customBottles)}>
                   {loading ? t('common.sending') : t('common.sendEnquiry')}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>

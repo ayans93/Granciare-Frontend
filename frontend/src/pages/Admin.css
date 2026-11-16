@@ -436,6 +436,48 @@
 .empty-state-with-action { display: flex; flex-direction: column; align-items: center; padding: 24px 0 16px; gap: 12px; }
 .you-badge { font-size: 10px; font-weight: 600; background: rgba(184,151,106,0.15); color: var(--adm-gold); padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
 
+/* ── ICAL BANNER ───────────────────────────────────────────── */
+.ical-banner {
+  background: #f0f7f4;
+  border: 1px solid #c3ddd2;
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ical-banner__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d6a4f;
+  display: block;
+  margin-bottom: 2px;
+}
+.ical-banner__sub {
+  font-size: 12px;
+  color: var(--adm-text-sub);
+  line-height: 1.5;
+}
+.ical-banner__url {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ical-banner__code {
+  font-family: monospace;
+  font-size: 12px;
+  background: #fff;
+  border: 1px solid #c3ddd2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: #2d6a4f;
+  flex: 1;
+  min-width: 200px;
+  word-break: break-all;
+}
+
 /* ── RESPONSIVE ────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .admin-shell { grid-template-columns: 1fr; }

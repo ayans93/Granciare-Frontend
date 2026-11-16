@@ -270,9 +270,29 @@ function StayConfirmations() {
       .order('check_in').then(({ data }) => setRows(data || []))
   }, [])
 
+  const icalUrl = `${window.location.origin}/api/calendar.ics`
+  const [copied, setCopied] = useState(false)
+  function copyIcal() {
+    navigator.clipboard.writeText(icalUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
+  }
+
   return (
     <div className="tab-content">
       <div className="tab-header"><h2>Stay Confirmations</h2></div>
+
+      {/* iCal feed */}
+      <div className="ical-banner">
+        <div className="ical-banner__info">
+          <span className="ical-banner__title">📅 iCal Feed</span>
+          <span className="ical-banner__sub">Share this URL with Airbnb, Booking.com, or any calendar app to sync confirmed bookings automatically.</span>
+        </div>
+        <div className="ical-banner__url">
+          <code className="ical-banner__code">{icalUrl}</code>
+          <button className="btn-action btn-sm--save" onClick={copyIcal}>{copied ? '✓ Copied' : 'Copy URL'}</button>
+          <a className="btn-action btn-sm--save" href={icalUrl} download="granciare-bookings.ics" style={{ textDecoration: 'none' }}>Download .ics</a>
+        </div>
+      </div>
+
       {rows.length === 0 ? <p className="empty-state">No confirmed bookings yet.</p> : (
         <div className="confirm-grid">
           {rows.map(r => (
