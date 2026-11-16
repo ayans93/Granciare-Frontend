@@ -83,6 +83,9 @@ export default function OliveOil() {
   // Product interactions
   const [selectedQtyIdx, setSelectedQtyIdx] = useState(0);
   const [galleryIdx, setGalleryIdx]         = useState(0);
+  const CUSTOM_IDX = -1; // sentinel for the custom tile
+  const isCustomTile = selectedQtyIdx === CUSTOM_IDX;
+  const [customTileQty, setCustomTileQty] = useState('');
 
   // Harvest signup
   const [harvestEmail, setHarvestEmail]         = useState('');
@@ -143,7 +146,9 @@ export default function OliveOil() {
     }
   };
 
-  const tier = qtyTiers[selectedQtyIdx] || qtyTiers[0];
+  const tier = isCustomTile
+    ? { qty: parseInt(customTileQty, 10) || 0, perBottle: 32, total: (parseInt(customTileQty, 10) || 0) * 32, save: null }
+    : (qtyTiers[selectedQtyIdx] || qtyTiers[0]);
 
   return (
     <div className="olive-page">
@@ -266,21 +271,48 @@ export default function OliveOil() {
               <div className="qty-selector">
                 <span className="qty-selector__label">Select quantity</span>
                 <div className="qty-presets">
-                  {qtyTiers.map((tier, i) => (
+                  {qtyTiers.map((t, i) => (
                     <button
-                      key={tier.qty}
+                      key={t.qty}
                       className={`qty-btn${i === selectedQtyIdx ? ' qty-btn--active' : ''}`}
                       onClick={() => setSelectedQtyIdx(i)}
                     >
-                      <span className="qty-btn__num">{tier.qty}</span>
+                      <span className="qty-btn__num">{t.qty}</span>
                       <span className="qty-btn__unit">btls</span>
                     </button>
                   ))}
+                  <button
+                    className={`qty-btn${isCustomTile ? ' qty-btn--active' : ''}`}
+                    onClick={() => { setSelectedQtyIdx(CUSTOM_IDX); setForm(f => ({ ...f, bottles: 'custom' })); }}
+                  >
+                    <span className="qty-btn__num" style={{ fontSize: '0.75rem', letterSpacing: '0.03em' }}>CUSTOM</span>
+                    <span className="qty-btn__unit">btls</span>
+                  </button>
                 </div>
+                {isCustomTile && (
+                  <input
+                    type="number"
+                    min="5"
+                    className="qty-custom-input"
+                    placeholder="Enter number of bottles (min 5)"
+                    value={customTileQty}
+                    onChange={e => { setCustomTileQty(e.target.value); setCustomBottles(e.target.value); }}
+                    autoFocus
+                  />
+                )}
                 <div className="qty-price">
-                  <span className="qty-total">€{tier.total.toLocaleString()}</span>
-                  <span className="qty-per-bottle">€{tier.perBottle.toFixed(2)} / bottle</span>
-                  {tier.save && <span className="qty-saving">{tier.save}</span>}
+                  {isCustomTile && customTileQty >= 5 ? (
+                    <>
+                      <span className="qty-total">€{(parseInt(customTileQty, 10) * 32).toLocaleString()}</span>
+                      <span className="qty-per-bottle">€32.00 / bottle</span>
+                    </>
+                  ) : !isCustomTile ? (
+                    <>
+                      <span className="qty-total">€{tier.total.toLocaleString()}</span>
+                      <span className="qty-per-bottle">€{tier.perBottle.toFixed(2)} / bottle</span>
+                      {tier.save && <span className="qty-saving">{tier.save}</span>}
+                    </>
+                  ) : null}
                 </div>
               </div>
 

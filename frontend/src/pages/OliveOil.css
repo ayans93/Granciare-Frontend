@@ -328,6 +328,21 @@
   margin-top: 3px;
 }
 
+.qty-custom-input {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--gold-lt);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--charcoal);
+  background: #fafaf8;
+  outline: none;
+}
+.qty-custom-input:focus { border-color: var(--bottle-green); }
+.olive-page .qty-custom-input:focus { border-color: var(--bottle-green); }
+
 .qty-price {
   display: flex;
   align-items: baseline;

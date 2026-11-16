@@ -8,6 +8,8 @@ const CREDENTIALS = [
   { email: 'gaurav@drishyamfilms.com',            password: 'Granciare@2026' },
   { email: 'ayan@dviu.in',                        password: 'Granciare@2026' },
   { email: 'mmundra@gmail.com',                   password: 'Granciare@2026' },
+  { email: 'mundradisha13@gmail.com',             password: 'Granciare@2026' },
+  { email: 'armoryan@gmail.com',                  password: 'Granciare@2026' },
 ];
 
 const SESSION_KEY = '_gc_auth';
