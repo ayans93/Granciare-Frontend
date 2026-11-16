@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { LanguageProvider } from './i18n/LanguageContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -8,24 +8,7 @@ import OliveOil from './pages/OliveOil';
 import Poderetto from './pages/Poderetto';
 import OurStory from './pages/OurStory';
 import Admin from './pages/Admin';
-import ComingSoon from './components/ComingSoon';
-
-const COMING_SOON = import.meta.env.VITE_COMING_SOON === 'true';
-
-// Preview bypass — visiting /?preview=granciarevip2026 unlocks the full site for this browser
-const PREVIEW_TOKEN = 'granciarevip2026';
-function isPreviewUnlocked() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('preview') === PREVIEW_TOKEN) {
-      localStorage.setItem('_gp', '1');
-      return true;
-    }
-    return localStorage.getItem('_gp') === '1';
-  } catch {
-    return false;
-  }
-}
+import PasswordGate, { isAuthenticated } from './components/PasswordGate';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -50,19 +33,29 @@ function Layout() {
   );
 }
 
+function ProtectedSite() {
+  const [authed, setAuthed] = useState(isAuthenticated);
+
+  if (!authed) {
+    return <PasswordGate onAuth={() => setAuthed(true)} />;
+  }
+
+  return (
+    <LanguageProvider>
+      <Layout />
+    </LanguageProvider>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
       <Routes>
-        {/* Admin panel — no navbar/footer, no coming-soon gate */}
+        {/* Admin panel — no gate, no navbar/footer */}
         <Route path="/admin/*" element={<Admin />} />
-        {/* Public site */}
-        <Route path="*" element={
-          COMING_SOON && !isPreviewUnlocked()
-            ? <ComingSoon />
-            : <LanguageProvider><Layout /></LanguageProvider>
-        } />
+        {/* Public site — behind password gate */}
+        <Route path="*" element={<ProtectedSite />} />
       </Routes>
     </BrowserRouter>
   );
