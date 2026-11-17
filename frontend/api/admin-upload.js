@@ -21,7 +21,11 @@ const CATEGORIES = [
   'bedrooms', 'living_areas', 'bathrooms', 'lounge_bar', 'olive_oil', 'awards',
 ]
 
-async function categorise(base64, mediaType) {
+async function categorise(base64, mediaType, fallback) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('categorise skipped: ANTHROPIC_API_KEY not set')
+    return { category: fallback, categorised: false }
+  }
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const msg = await anthropic.messages.create({
@@ -51,10 +55,12 @@ async function categorise(base64, mediaType) {
       }],
     })
     const cat = msg.content[0].text.trim().toLowerCase().replace(/[^a-z_]/g, '')
-    return CATEGORIES.includes(cat) ? cat : 'mansion'
-  } catch {
-    return 'mansion'
+    if (CATEGORIES.includes(cat)) return { category: cat, categorised: true }
+    console.error('categorise: unexpected answer', cat)
+  } catch (e) {
+    console.error('categorise failed:', e?.message || e)
   }
+  return { category: fallback, categorised: false }
 }
 
 export const config = { api: { bodyParser: false } }
@@ -130,7 +136,7 @@ export default async function handler(req, res) {
 
     // AI categorisation
     const base64 = fileBuffer.toString('base64')
-    const category = await categorise(base64, fileMediaType)
+    const { category, categorised } = await categorise(base64, fileMediaType, tab === 'oil' ? 'olive_oil' : 'landscape')
 
     // Upload to Supabase Storage
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(filePath, fileBuffer, {
@@ -141,7 +147,7 @@ export default async function handler(req, res) {
 
     const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
 
-    return res.status(200).json({ publicUrl, category })
+    return res.status(200).json({ publicUrl, category, categorised })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })

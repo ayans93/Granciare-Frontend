@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { submitLead } from '../lib/leads';
+import { isValidPhone } from '../lib/validation';
 import './OliveOil.css';
 
 // Fallback prices if Supabase hasn't loaded yet
@@ -47,23 +48,11 @@ const CERT_LOGOS = [
   { src: '/images/olive-oil/solivé-ultra-premium-evoo-logo.png',   alt: 'Ultra Premium EVOO' },
 ];
 
-const PAIRINGS = [
-  { emoji: '🍞', name: 'Bruschetta',   desc: 'Drizzle generously on grilled sourdough with sea salt and fresh tomato' },
-  { emoji: '🐟', name: 'Grilled Fish', desc: 'Finish sea bass or turbot at the table — never in the pan' },
-  { emoji: '🥗', name: 'Salads',       desc: 'Use as a dressing base; the bitterness naturally replaces vinegar' },
-  { emoji: '🍝', name: 'Pasta',        desc: 'Finish aglio e olio or cacio e pepe — Solivé is the flavour, not just a fat' },
-  { emoji: '🧀', name: 'Soft Cheese',  desc: 'Burrata, ricotta, fresh mozzarella — pair with sea salt and black pepper' },
-];
-
-const REVIEWS = [
-  { initials: 'S', name: 'Sofia M.', location: 'London, UK', text: 'I have tried many Italian EVOOs but Solivé\'s polyphenol data genuinely shows in the taste — the pepper kick is remarkable. We ordered 12 bottles and they were gone within three months.', date: 'September 2025' },
-  { initials: 'M', name: 'Marco T.', location: 'Dubai, UAE', text: 'Ordered 24 bottles as corporate gifts after seeing the Dubai competition win. Every recipient has asked where to buy more. The packaging is exceptional.', date: 'October 2025' },
-  { initials: 'A', name: 'Anna K.', location: 'Berlin, Germany', text: 'The harvest year and chemistry details convinced me to order — I study food science and 487 mg/kg polyphenols is genuinely outstanding. Worth every euro.', date: 'November 2025' },
-];
-
 export default function OliveOil() {
   const { t, ta } = useTranslation();
   const steps     = ta('oliveOil.steps');
+  const pairings  = ta('olv.pairings');
+  const storageTips = ta('olv.storage');
   const facts     = ta('oliveOil.facts');
   const takeaways = ta('oliveOil.takeaways');
 
@@ -85,7 +74,9 @@ export default function OliveOil() {
 
   // Quantity — one selection shared by the tiles above and the order form below
   const orderTiers = qtyTiers.filter(t => t.qty >= MIN_BOTTLES);
-  const basePrice = qtyTiers.length ? qtyTiers[0].perBottle : 0;
+  // "Save %" is measured against the smallest orderable tier
+  const basePrice = orderTiers.length ? orderTiers[0].perBottle : 0;
+  const minPrice = orderTiers.length ? Math.min(...orderTiers.map(x => x.perBottle)) : null;
   const [selection, setSelection] = useState(MIN_BOTTLES);   // a tier quantity, or 'custom'
   const [customQty, setCustomQty] = useState('');
   const isCustom = selection === 'custom';
@@ -103,7 +94,7 @@ export default function OliveOil() {
     const reached = orderTiers.filter(t => t.qty <= q);
     const tierRow = reached[reached.length - 1];
     if (!tierRow) return null;
-    const save = tierRow.perBottle < basePrice ? `Save ${Math.round((1 - tierRow.perBottle / basePrice) * 100)}%` : null;
+    const save = tierRow.perBottle < basePrice ? Math.round((1 - tierRow.perBottle / basePrice) * 100) : null;
     return { perBottle: tierRow.perBottle, total: Math.round(q * tierRow.perBottle * 100) / 100, save };
   };
   const price = priceFor(selectedQty);
@@ -147,6 +138,9 @@ export default function OliveOil() {
     });
   }, []);
 
+  const harvestYear = String(soliveStats.solive_harvest_year || '').trim() || '2025';
+  const nextHarvest = /^\d{4}$/.test(harvestYear) ? Number(harvestYear) + 1 : '';
+
   // Sticky CTA
   const [showSticky, setShowSticky] = useState(false);
   const heroRef = useRef(null);
@@ -164,10 +158,11 @@ export default function OliveOil() {
     if (submittingRef.current) return;           // ignore double clicks
     setError('');
     if (!selectedQty) {
-      setError(`Please enter a whole number of bottles between ${MIN_BOTTLES} and ${MAX_BOTTLES}.`);
+      setError(t('olv.errQty', { min: MIN_BOTTLES, max: MAX_BOTTLES }));
       return;
     }
-    if (!form.name.trim()) { setError('Please enter your name.'); return; }
+    if (!form.name.trim()) { setError(t('bk.errName')); return; }
+    if (!isValidPhone(form.phone)) { setError(t('bk.errPhone')); return; }
     submittingRef.current = true;
     setLoading(true);
     try {
@@ -212,7 +207,7 @@ export default function OliveOil() {
             <div className="hero-trust-pills">
               <span className="trust-pill">🏆 Dubai IOOC Gold 2026</span>
               <span className="trust-pill">🌿 PDO Umbria</span>
-              <a href="/images/olive-oil/solivé-dubai-gold-award-certificate.png" target="_blank" rel="noreferrer" className="trust-pill trust-pill--link">⬇ Certificate</a>
+              <a href="/images/olive-oil/solivé-dubai-gold-award-certificate.png" target="_blank" rel="noreferrer" className="trust-pill trust-pill--link">{t('olv.certificate')}</a>
             </div>
           </div>
           <a href="#order" className="btn btn-gold mt-32">{t('oliveOil.heroBtn')}</a>
@@ -222,7 +217,7 @@ export default function OliveOil() {
       {/* ── CERT / AWARD LOGOS STRIP ─────────────────────── */}
       <section className="olive-cert-strip">
         <div className="container">
-          <span className="cert-strip-label">Awards &amp; Certifications</span>
+          <span className="cert-strip-label">{t('olv.awardsLabel')}</span>
           <div className="cert-logos-row">
             {CERT_LOGOS.map(l => (
               <div key={l.alt} className="cert-logo-wrap">
@@ -263,60 +258,58 @@ export default function OliveOil() {
 
             {/* Product info + ordering */}
             <div className="product-info">
-              <span className="section-label">Solivé Extra Virgin Olive Oil</span>
-              <h2 className="section-title" style={{ fontSize: '32px' }}>The 2025 Harvest</h2>
+              <span className="section-label">{t('olv.productLabel')}</span>
+              <h2 className="section-title" style={{ fontSize: '32px' }}>{t('olv.harvestTitle', { year: harvestYear })}</h2>
               {/* Chemistry panel */}
               <div className="chem-panel">
                 <div className="chem-stat">
                   <span className="chem-val">{soliveStats.solive_acidity}</span>
-                  <span className="chem-key">Acidity</span>
+                  <span className="chem-key">{t('olv.acidity')}</span>
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
                   <span className="chem-val">{soliveStats.solive_polyphenols}</span>
-                  <span className="chem-key">Polyphenols mg/kg</span>
+                  <span className="chem-key">{t('olv.polyphenols')}</span>
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
                   <span className="chem-val">{soliveStats.solive_harvest_year}</span>
-                  <span className="chem-key">Harvest Year</span>
+                  <span className="chem-key">{t('olv.harvestYear')}</span>
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
                   <span className="chem-val" style={{ fontSize: '14px', paddingTop: '4px' }}>{soliveStats.solive_cultivar}</span>
-                  <span className="chem-key">Cultivar</span>
+                  <span className="chem-key">{t('olv.cultivar')}</span>
                 </div>
               </div>
 
               {/* Tasting notes compact */}
               <div className="tasting-compact">
-                <span className="tasting-compact__label">Tasting notes</span>
-                <p className="tasting-compact__text">
-                  Fresh-cut grass and artichoke on the nose · Intensely fruity with a clean bitterness · Long, peppery finish with dried herbs and warm almond
-                </p>
+                <span className="tasting-compact__label">{t('olv.tastingLabel')}</span>
+                <p className="tasting-compact__text">{t('olv.tastingText')}</p>
                 <div className="intensity-row">
-                  <span className="intensity-label-sm">Delicate</span>
+                  <span className="intensity-label-sm">{t('olv.delicate')}</span>
                   <div className="intensity-track-sm">
                     <div className="intensity-fill-sm" />
                     <div className="intensity-dot-sm" />
                   </div>
-                  <span className="intensity-label-sm" style={{ color: 'var(--gold-lt)' }}>Robust</span>
+                  <span className="intensity-label-sm" style={{ color: 'var(--gold-lt)' }}>{t('olv.robust')}</span>
                 </div>
               </div>
 
               {/* Qty selector */}
               <div className="qty-selector">
-                <span className="qty-selector__label">Select quantity</span>
+                <span className="qty-selector__label">{t('olv.selectQty')}</span>
                 <div className="qty-presets">
-                  {orderTiers.map(t => (
+                  {orderTiers.map(tierRow => (
                     <button
                       type="button"
-                      key={t.qty}
-                      className={`qty-btn${selection === t.qty ? ' qty-btn--active' : ''}`}
-                      onClick={() => chooseQty(t.qty)}
+                      key={tierRow.qty}
+                      className={`qty-btn${selection === tierRow.qty ? ' qty-btn--active' : ''}`}
+                      onClick={() => chooseQty(tierRow.qty)}
                     >
-                      <span className="qty-btn__num">{t.qty}</span>
-                      <span className="qty-btn__unit">btls</span>
+                      <span className="qty-btn__num">{tierRow.qty}</span>
+                      <span className="qty-btn__unit">{t('olv.btls')}</span>
                     </button>
                   ))}
                   <button
@@ -324,8 +317,8 @@ export default function OliveOil() {
                     className={`qty-btn${isCustom ? ' qty-btn--active' : ''}`}
                     onClick={() => chooseQty('custom')}
                   >
-                    <span className="qty-btn__num" style={{ fontSize: '0.75rem', letterSpacing: '0.03em' }}>CUSTOM</span>
-                    <span className="qty-btn__unit">btls</span>
+                    <span className="qty-btn__num" style={{ fontSize: '0.75rem', letterSpacing: '0.03em' }}>{t('olv.custom')}</span>
+                    <span className="qty-btn__unit">{t('olv.btls')}</span>
                   </button>
                 </div>
                 {isCustom && (
@@ -335,21 +328,21 @@ export default function OliveOil() {
                     max={MAX_BOTTLES}
                     step="1"
                     className="qty-custom-input"
-                    placeholder={`Enter number of bottles (min ${MIN_BOTTLES})`}
+                    placeholder={t('olv.customPh', { min: MIN_BOTTLES })}
                     value={customQty}
                     onChange={e => setCustomQty(e.target.value)}
                     autoFocus
                   />
                 )}
                 {isCustom && customQty !== '' && !customValid && (
-                  <p className="qty-custom-error">Enter a whole number from {MIN_BOTTLES} to {MAX_BOTTLES.toLocaleString()}.</p>
+                  <p className="qty-custom-error">{t('olv.customError', { min: MIN_BOTTLES, max: MAX_BOTTLES.toLocaleString() })}</p>
                 )}
                 <div className="qty-price">
                   {price && (
                     <>
                       <span className="qty-total">€{price.total.toLocaleString()}</span>
-                      <span className="qty-per-bottle">€{price.perBottle.toFixed(2)} / bottle</span>
-                      {price.save && <span className="qty-saving">{price.save}</span>}
+                      <span className="qty-per-bottle">€{price.perBottle.toFixed(2)} {t('olv.perBottle')}</span>
+                      {price.save && <span className="qty-saving">{t('olv.save', { n: price.save })}</span>}
                     </>
                   )}
                 </div>
@@ -359,18 +352,18 @@ export default function OliveOil() {
               <div className="moq-note">
                 <span className="moq-note__icon">🫒</span>
                 <p>
-                  <strong>Why a minimum of 5 bottles?</strong> The thermal mass protects your oil during shipping, and a full case gives 3–4 months of Solivé at typical household use — ensuring every drop arrives in peak condition.
+                  <strong>{t('olv.moqTitle', { min: MIN_BOTTLES })}</strong> {t('olv.moqText')}
                 </p>
               </div>
 
-              <a href="#enquire" className="btn btn-primary btn-full">Enquire to Order</a>
+              <a href="#enquire" className="btn btn-primary btn-full">{t('olv.enquire')}</a>
               <a
                 href="https://wa.me/393520730769"
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn-outline btn-full"
               >
-                Order via WhatsApp
+                {t('olv.orderWhatsapp')}
               </a>
             </div>
           </div>
@@ -405,11 +398,11 @@ export default function OliveOil() {
       <section className="section olive-pairing">
         <div className="container">
           <div className="text-center mb-48">
-            <span className="section-label" style={{ justifyContent: 'center' }}>Serving Ideas</span>
-            <h2 className="section-title">How to use Solivé</h2>
+            <span className="section-label" style={{ justifyContent: 'center' }}>{t('olv.servingLabel')}</span>
+            <h2 className="section-title">{t('olv.servingTitle')}</h2>
           </div>
           <div className="pairing-row">
-            {PAIRINGS.map(p => (
+            {pairings.map(p => (
               <div key={p.name} className="pairing-tile">
                 <span className="pairing-emoji">{p.emoji}</span>
                 <span className="pairing-name">{p.name}</span>
@@ -451,67 +444,48 @@ export default function OliveOil() {
           <div className="logistics-grid">
             {/* Shipping */}
             <div className="logistics-col">
-              <span className="section-label">Shipping &amp; Delivery</span>
-              <h3 className="logistics-h3">We ship worldwide</h3>
+              <span className="section-label">{t('olv.shipLabel')}</span>
+              <h3 className="logistics-h3">{t('olv.shipTitle')}</h3>
               <div className="ship-cards">
                 <div className="ship-card">
-                  <span className="ship-region">🇮🇹 Italy &amp; EU</span>
+                  <span className="ship-region">🇮🇹 {t('olv.shipEU')}</span>
                   <div className="ship-rows">
-                    <div className="ship-row"><span>Delivery</span><span>3–5 working days</span></div>
-                    <div className="ship-row"><span>Standard</span><span>€8 · Free over 12 btls</span></div>
+                    <div className="ship-row"><span>{t('olv.delivery')}</span><span>{t('olv.days', { n: '3–5' })}</span></div>
+                    <div className="ship-row"><span>{t('olv.standard')}</span><span>{t('olv.freeOver')}</span></div>
                   </div>
                 </div>
                 <div className="ship-card">
-                  <span className="ship-region">🇬🇧 UK &amp; Switzerland</span>
+                  <span className="ship-region">🇬🇧 {t('olv.shipUK')}</span>
                   <div className="ship-rows">
-                    <div className="ship-row"><span>Delivery</span><span>5–7 working days</span></div>
-                    <div className="ship-row"><span>DHL</span><span>from €18</span></div>
+                    <div className="ship-row"><span>{t('olv.delivery')}</span><span>{t('olv.days', { n: '5–7' })}</span></div>
+                    <div className="ship-row"><span>DHL</span><span>{t('olv.from', { n: 18 })}</span></div>
                   </div>
                 </div>
                 <div className="ship-card">
-                  <span className="ship-region">🌍 US · UAE · Worldwide</span>
+                  <span className="ship-region">🌍 {t('olv.shipWorld')}</span>
                   <div className="ship-rows">
-                    <div className="ship-row"><span>Delivery</span><span>7–10 working days</span></div>
-                    <div className="ship-row"><span>DHL Express</span><span>from €28</span></div>
+                    <div className="ship-row"><span>{t('olv.delivery')}</span><span>{t('olv.days', { n: '7–10' })}</span></div>
+                    <div className="ship-row"><span>DHL Express</span><span>{t('olv.from', { n: 28 })}</span></div>
                   </div>
                 </div>
               </div>
-              <p className="logistics-note">All orders tracked and insured · Temperature-protected packaging</p>
+              <p className="logistics-note">{t('olv.shipNote')}</p>
             </div>
 
             {/* Storage */}
             <div className="logistics-col">
-              <span className="section-label">Storage &amp; Care</span>
-              <h3 className="logistics-h3">How to store Solivé</h3>
+              <span className="section-label">{t('olv.storeLabel')}</span>
+              <h3 className="logistics-h3">{t('olv.storeTitle')}</h3>
               <div className="storage-tiles">
-                <div className="storage-tile">
-                  <span className="storage-ico">🌑</span>
-                  <div>
-                    <span className="storage-title">Away from light</span>
-                    <span className="storage-sub">UV degrades polyphenols — store in a dark cupboard or pantry</span>
+                {storageTips.map(tip => (
+                  <div key={tip.ico} className="storage-tile">
+                    <span className="storage-ico">{tip.ico}</span>
+                    <div>
+                      <span className="storage-title">{tip.title}</span>
+                      <span className="storage-sub">{tip.sub}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="storage-tile">
-                  <span className="storage-ico">🌡</span>
-                  <div>
-                    <span className="storage-title">10–18°C ideal</span>
-                    <span className="storage-sub">Room temperature is fine; avoid refrigeration</span>
-                  </div>
-                </div>
-                <div className="storage-tile">
-                  <span className="storage-ico">⏰</span>
-                  <div>
-                    <span className="storage-title">Best within 12 months</span>
-                    <span className="storage-sub">Consume within 12 months of the harvest date for full benefit</span>
-                  </div>
-                </div>
-                <div className="storage-tile">
-                  <span className="storage-ico">🍶</span>
-                  <div>
-                    <span className="storage-title">Seal after use</span>
-                    <span className="storage-sub">Replace the cap tightly after each pour to minimise oxidation</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -538,10 +512,10 @@ export default function OliveOil() {
         </div>
         <div className="container olive-harvest-signup__content">
           <div className="harvest-ornament">— 🫒 —</div>
-          <h2 className="harvest-title">Be the first to taste<br /><em>the 2026 harvest</em></h2>
-          <p className="harvest-sub">We press in late October. Be notified the moment the new harvest ships — before we open to the public.</p>
+          <h2 className="harvest-title">{t('olv.harvestTitle1')}<br /><em>{t('olv.harvestTitle2', { year: nextHarvest })}</em></h2>
+          <p className="harvest-sub">{t('olv.harvestSub')}</p>
           {harvestDone ? (
-            <p className="harvest-done">✓ You're on the list. We'll be in touch come harvest time.</p>
+            <p className="harvest-done">{t('olv.harvestDone')}</p>
           ) : (
             <form className="harvest-form" onSubmit={submitHarvest}>
               <input
@@ -552,13 +526,13 @@ export default function OliveOil() {
                 onChange={e => setHarvestEmail(e.target.value)}
                 required
               />
-              <button type="submit" className="harvest-btn" disabled={harvestSending}>{harvestSending ? 'Sending…' : 'Notify Me'}</button>
+              <button type="submit" className="harvest-btn" disabled={harvestSending}>{harvestSending ? t('common.sending') : t('olv.notifyMe')}</button>
             </form>
           )}
           {harvestError && !harvestDone && (
             <p className="harvest-error" role="alert">{harvestError}</p>
           )}
-          <p className="harvest-note">Join 1,200+ subscribers · Unsubscribe anytime · Harvest news only</p>
+          <p className="harvest-note">{t('olv.harvestNote')}</p>
         </div>
       </section>
 
@@ -620,8 +594,8 @@ export default function OliveOil() {
                   <div className="form-group">
                     <label>{t('oliveOil.numberOfBottles')}</label>
                     <select name="bottles" value={String(selection)} onChange={e => chooseQty(e.target.value)}>
-                      {orderTiers.map(t => <option key={t.qty} value={t.qty}>{t.qty} bottles</option>)}
-                      <option value="custom">Custom quantity…</option>
+                      {orderTiers.map(tierRow => <option key={tierRow.qty} value={tierRow.qty}>{t('olv.bottlesOpt', { n: tierRow.qty })}</option>)}
+                      <option value="custom">{t('olv.customOpt')}</option>
                     </select>
                     {isCustom && (
                       <input
@@ -631,25 +605,25 @@ export default function OliveOil() {
                         step="1"
                         value={customQty}
                         onChange={e => setCustomQty(e.target.value)}
-                        placeholder={`Enter number of bottles (min ${MIN_BOTTLES})`}
+                        placeholder={t('olv.customPh', { min: MIN_BOTTLES })}
                         required
                         style={{ marginTop: '10px' }}
                       />
                     )}
                     {price && (
                       <p className="form-hint" style={{ marginTop: '8px' }}>
-                        {selectedQty} bottles · €{price.perBottle.toFixed(2)} / bottle · €{price.total.toLocaleString()} total
+                        {t('olv.summary', { n: selectedQty, per: price.perBottle.toFixed(2), total: price.total.toLocaleString() })}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className="form-group">
                   <label>{t('oliveOil.deliveryAddress')}</label>
-                  <input type="text" name="address" value={form.address} onChange={handle} placeholder="Street, City, Postcode, Country" required />
+                  <input type="text" name="address" value={form.address} onChange={handle} placeholder={t('olv.addressPh')} required />
                 </div>
                 <div className="form-group">
                   <label>{t('common.message')}</label>
-                  <textarea name="message" value={form.message} onChange={handle} placeholder="Any special instructions, questions, or notes…" rows={3} />
+                  <textarea name="message" value={form.message} onChange={handle} placeholder={t('olv.messagePh')} rows={3} />
                 </div>
                 {error && (
                   <div className="booking-widget__error" style={{ marginBottom:'12px', padding:'12px 16px', background:'#fff3f3', border:'1px solid #f5c2c2', color:'#c0392b', fontSize:'14px' }}>
@@ -672,10 +646,10 @@ export default function OliveOil() {
       <div className={`sticky-order${showSticky ? ' sticky-order--visible' : ''}`}>
         <div className="sticky-order__inner">
           <div className="sticky-order__info">
-            <span className="sticky-order__name">Solivé 500ml · 2025 Harvest</span>
-            <span className="sticky-order__price">from €32 / bottle · 5-bottle minimum</span>
+            <span className="sticky-order__name">{t('olv.stickyName', { year: harvestYear })}</span>
+            {minPrice != null && <span className="sticky-order__price">{t('olv.stickyPrice', { price: minPrice % 1 ? minPrice.toFixed(2) : minPrice, min: MIN_BOTTLES })}</span>}
           </div>
-          <a href="#order" className="btn btn-gold sticky-order__btn">Order Now →</a>
+          <a href="#order" className="btn btn-gold sticky-order__btn">{t('olv.orderNow')}</a>
         </div>
       </div>
 
@@ -684,16 +658,16 @@ export default function OliveOil() {
         {waOpen && (
           <div className="wa-card">
             <button className="wa-card__close" onClick={() => setWaOpen(false)}>✕</button>
-            <div className="wa-card__title">Chat with Granciare</div>
+            <div className="wa-card__title">{t('olv.waTitle')}</div>
             <div className="wa-card__num">+39 352 0730769</div>
-            <div className="wa-card__note">Typically replies within 2 hours · Mon–Sat 9:00–18:00 CET</div>
+            <div className="wa-card__note">{t('olv.waNote')}</div>
             <a
               href="https://wa.me/393520730769"
               target="_blank"
               rel="noreferrer"
               className="wa-card__btn"
             >
-              Start Chat
+              {t('olv.waStart')}
             </a>
           </div>
         )}

@@ -276,3 +276,13 @@
   content: ''; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
   margin-left: -2px; border-radius: 50%; background: var(--stone-lt, #b9ae9f);
 }
+
+/* Narrow screens: months stack, so name each month above its grid */
+@media (max-width: 640px) {
+  .drp-nav__month2 { display: none; }
+  .drp-month + .drp-month .drp-month__name {
+    display: block; font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--charcoal); text-align: center; margin-bottom: 10px;
+  }
+  .drp-nav__months { gap: 0; justify-content: center; flex: 1; }
+}

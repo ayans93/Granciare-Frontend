@@ -7,6 +7,7 @@
  * quoted on enquiry.
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from '../i18n/LanguageContext';
 import './PricingEstimator.css';
 
 let cache;
@@ -58,6 +59,7 @@ export function estimateStay(checkIn, checkOut, ranges) {
 }
 
 export default function PricingEstimator({ checkIn, checkOut }) {
+  const { t } = useTranslation();
   const [ranges, setRanges] = useState(cache ?? null);
   useEffect(() => {
     let alive = true;
@@ -70,37 +72,37 @@ export default function PricingEstimator({ checkIn, checkOut }) {
   if (!est) return null;
 
   const { nights, complete, total, min, max, labels } = est;
-  const nightLabel = `${nights} ${nights === 1 ? 'night' : 'nights'}`;
+  const nightLabel = `${nights} ${nights === 1 ? t('booking.night') : t('booking.nights')}`;
 
   return (
     <div className="pe">
       <div className="pe__header">
-        <span className="pe__label">Estimated Stay Cost</span>
-        {complete && labels.length > 1 && <span className="pe__badge">Multi-season</span>}
+        <span className="pe__label">{t('pricing.title')}</span>
+        {complete && labels.length > 1 && <span className="pe__badge">{t('pricing.multiSeason')}</span>}
       </div>
 
       {complete ? (
         <div className="pe__range">
           <div className="pe__range-row">
-            <span className="pe__range-label">Price per night{labels.length ? ` · ${labels.join(' / ')}` : ''}</span>
+            <span className="pe__range-label">{t('pricing.perNight')}{labels.length ? ` · ${labels.join(' / ')}` : ''}</span>
             <span className="pe__range-value">{min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`}</span>
           </div>
           <div className="pe__range-row pe__range-row--estimate">
-            <span className="pe__range-label">Estimated total · {nightLabel}</span>
+            <span className="pe__range-label">{t('bk.estTotal', { nights: nightLabel })}</span>
             <span className="pe__range-value pe__range-value--highlight">{fmt(total)}</span>
           </div>
         </div>
       ) : (
         <div className="pe__range">
           <div className="pe__range-row">
-            <span className="pe__range-label">Rates for these dates are confirmed on enquiry</span>
-            <span className="pe__range-value">Price on request</span>
+            <span className="pe__range-label">{t('bk.onEnquiry')}</span>
+            <span className="pe__range-value">{t('bk.priceOnRequest')}</span>
           </div>
         </div>
       )}
 
       <p className="pe__disclaimer">
-        Indicative pricing only · Exclusive use of the full estate · Final rates confirmed on enquiry
+        {t('pricing.disclaimer')}
       </p>
     </div>
   );

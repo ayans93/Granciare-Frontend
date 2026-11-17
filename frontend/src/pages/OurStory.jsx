@@ -12,7 +12,7 @@ export default function OurStory() {
       <section className="story-hero">
         <div className="story-hero__bg">
           <img
-            src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1800&q=85"
+            src="/images/mansion/mansion-estate-golden-hour.jpeg"
             alt="The estate at dusk"
           />
           <div className="story-hero__overlay" />
@@ -45,7 +45,7 @@ export default function OurStory() {
       {/* ── IMAGE SPLIT ──────────────────────────────────────── */}
       <section className="story-split">
         <div className="story-split__img">
-          <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&q=80" alt="Table at Granciare" />
+          <img src="/images/pool/dining-room-tables-fireplace.jpeg" alt="Table at Granciare" />
         </div>
         <div className="story-split__content">
           <span className="section-label">{t('ourStory.beliefLabel')}</span>
@@ -97,7 +97,7 @@ export default function OurStory() {
               <h2 className="section-title">{t('ourStory.estateTitle')}</h2>
               <p className="story-body">{t('ourStory.estatePara1')}</p>
               <p className="story-body mt-16">{t('ourStory.estatePara2')}</p>
-              <a href="/" className="btn btn-primary mt-32">Explore Granciare →</a>
+              <a href="/" className="btn btn-primary mt-32">{t('story.exploreGranciare')}</a>
             </div>
             <div className="story-land__images">
               <div className="story-land__img-main">
@@ -119,7 +119,7 @@ export default function OurStory() {
             <h2 className="section-title">{t('ourStory.oilTitle')}</h2>
             <p className="story-body">{t('ourStory.oilPara1')}</p>
             <p className="story-body mt-16">{t('ourStory.oilPara2')}</p>
-            <a href="/olive-oil" className="btn btn-primary mt-32">Explore Solivé →</a>
+            <a href="/olive-oil" className="btn btn-primary mt-32">{t('story.exploreSolive')}</a>
           </div>
         </div>
       </section>
@@ -130,7 +130,7 @@ export default function OurStory() {
           <div className="story-land__grid">
             <div className="story-land__images">
               <div className="story-land__img-main">
-                <img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=700&q=80" alt="Poderetto Estate" />
+                <img src="/images/landscape/estate-view-through-trees.jpeg" alt="Poderetto Estate" />
               </div>
             </div>
             <div>
@@ -138,7 +138,7 @@ export default function OurStory() {
               <h2 className="section-title">The Second Chapter</h2>
               <p className="story-body">Poderetto sits at the northern edge of the estate — quieter, more private, with its own distinct architecture and character. Where Granciare draws from the warmth of central Italian farmhouse tradition, Poderetto has been designed with a lighter touch.</p>
               <p className="story-body mt-16">Two independent residences among the olive groves, sharing an infinity pool. A place for those who want Umbria without compromise.</p>
-              <a href="/poderetto" className="btn btn-outline mt-32">Explore Poderetto →</a>
+              <a href="/poderetto" className="btn btn-outline mt-32">{t('story.explorePoderetto')}</a>
             </div>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function OurStory() {
       {/* ── CLOSING CTA ──────────────────────────────────────── */}
       <section className="story-cta">
         <div className="story-cta__bg">
-          <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1800&q=85" alt="Granciare at sunset" />
+          <img src="/images/mansion/mansion-rooftop-sunset.jpeg" alt="Granciare at sunset" />
           <div className="story-cta__overlay" />
         </div>
         <div className="container story-cta__content">
@@ -158,7 +158,7 @@ export default function OurStory() {
           <p className="story-cta__sub">{t('ourStory.ctaSub')}</p>
           <div className="story-cta__actions">
             <a href="/" className="btn btn-primary">{t('common.bookGranciare')}</a>
-            <a href="/olive-oil" className="btn btn-outline-light">Order Solivé</a>
+            <a href="/olive-oil" className="btn btn-outline-light">{t('nav.orderSolive')}</a>
           </div>
         </div>
       </section>

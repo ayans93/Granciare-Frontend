@@ -184,3 +184,19 @@
   .navbar__burger { display: flex; }
   .navbar__inner { padding: 0 24px; }
 }
+
+/* Keep menu items on one line in longer languages (it / es / fr) */
+.navbar__link { white-space: nowrap; }
+.navbar__actions .btn { white-space: nowrap; }
+@media (max-width: 1360px) {
+  .navbar__inner { padding: 0 32px; gap: 20px; }
+  .navbar__links { gap: 22px; }
+  .navbar__link { letter-spacing: 0.06em; font-size: 11px; }
+}
+@media (max-width: 1180px) {
+  .navbar__links { gap: 16px; }
+  .navbar__actions { gap: 12px; }
+  .navbar__whatsapp span, .navbar__whatsapp-label { display: none; }
+}
+/* Language button readable on the cream mobile menu */
+.navbar__mobile-lang .lang-sw__trigger { border-color: rgba(40, 35, 30, 0.25); color: var(--charcoal); }

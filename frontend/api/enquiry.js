@@ -31,6 +31,7 @@ import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 import { getServerClient, hasServiceKey } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
+import { escapeHtml as esc, sendMail } from './_lib/mail.js';
 
 // ── CORS helper ───────────────────────────────────────────────
 function setCors(req, res) {
@@ -152,7 +153,7 @@ async function appendToSheet(data) {
     formatGuests(data.adults, data.children, data.guests),         // G: Guests
     specialRequests,                                               // H: Special Requests
     message,                                                       // I: Message
-    data.source   || 'granciare.com',                              // J: Source
+    `${data.source || 'granciare.com'}${data.ref ? ' · ' + data.ref : ''}`, // J: Source + reference
   ];
 
   // RAW mode: values stored as literal strings — prevents Sheets from
@@ -188,7 +189,7 @@ async function sendNotificationEmail(data) {
           Granciare Estate
         </h1>
         <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin: 6px 0 0; letter-spacing: 0.1em; text-transform: uppercase;">
-          New Booking Enquiry
+          New Booking Enquiry${data.ref ? ` · ${esc(data.ref)}` : ''}
         </p>
       </div>
 
@@ -196,19 +197,19 @@ async function sendNotificationEmail(data) {
         <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; width: 160px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Name</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; font-weight: 600;">${data.name}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; font-weight: 600;">${esc(data.name)}</td>
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Email</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;"><a href="mailto:${data.email}" style="color: #c9a96e;">${data.email}</a></td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;"><a href="mailto:${esc(data.email)}" style="color: #c9a96e;">${esc(data.email)}</a></td>
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Phone</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${formatPhone(data.phone)}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${esc(formatPhone(data.phone))}</td>
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Dates</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${checkInOut}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${esc(checkInOut)}</td>
           </tr>
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Guests</td>
@@ -217,12 +218,12 @@ async function sendNotificationEmail(data) {
           ${data.specialRequests ? `
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; vertical-align: top;">Special Requests</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; line-height: 1.7; color: #4a4540;">${data.specialRequests}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; line-height: 1.7; color: #4a4540;">${esc(data.specialRequests)}</td>
           </tr>` : ''}
           ${data.message ? `
           <tr>
             <td style="padding: 12px 0; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; vertical-align: top;">Message</td>
-            <td style="padding: 12px 0; line-height: 1.7; color: #4a4540;">${data.message}</td>
+            <td style="padding: 12px 0; line-height: 1.7; color: #4a4540; white-space: pre-wrap;">${esc(data.message)}</td>
           </tr>` : ''}
         </table>
       </div>
@@ -238,9 +239,33 @@ async function sendNotificationEmail(data) {
   await transporter.sendMail({
     from:    `"Granciare Estate" <${process.env.GMAIL_USER}>`,
     to:      process.env.NOTIFY_EMAIL,
-    subject: `New enquiry from ${data.name} — Granciare Estate`,
+    subject: `New enquiry from ${data.name}${data.ref ? ` (${data.ref})` : ''} — Granciare Estate`,
     html,
   });
+}
+
+// ── Email: acknowledgement to the guest ───────────────────────
+async function sendGuestAcknowledgement(data) {
+  const nights = Math.round((Date.parse(data.checkOut) - Date.parse(data.checkIn)) / 86400000);
+  const html = `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #1e1c1a;">
+      <div style="background: #1e1c1a; padding: 28px 32px;">
+        <h1 style="color: #c9a96e; font-size: 22px; margin: 0; letter-spacing: 0.05em;">Granciare Estate</h1>
+      </div>
+      <div style="padding: 32px; background: #faf9f7; border: 1px solid #e8e0d4; font-size: 15px; line-height: 1.7;">
+        <p>Dear ${esc(data.name)},</p>
+        <p>Thank you for your enquiry. We have received your request and will reply personally within 24 hours to confirm availability and the next steps.</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0;">
+          ${data.ref ? `<tr><td style="padding: 8px 0; color: #8a7f72; width: 140px;">Reference</td><td style="padding: 8px 0; font-weight: 600;">${esc(data.ref)}</td></tr>` : ''}
+          <tr><td style="padding: 8px 0; color: #8a7f72;">Dates</td><td style="padding: 8px 0;">${esc(data.checkIn)} → ${esc(data.checkOut)} (${nights} nights)</td></tr>
+          <tr><td style="padding: 8px 0; color: #8a7f72;">Guests</td><td style="padding: 8px 0;">${esc(formatGuests(data.adults, data.children))}</td></tr>
+          ${data.specialRequests ? `<tr><td style="padding: 8px 0; color: #8a7f72;">Requests</td><td style="padding: 8px 0;">${esc(data.specialRequests)}</td></tr>` : ''}
+        </table>
+        <p>This is not yet a confirmed booking. If you have any questions, reply to this email or message us on WhatsApp: +39 352 0730769.</p>
+        <p>Warm regards,<br/>The Granciare team</p>
+      </div>
+    </div>`;
+  return sendMail(data.email, `We've received your enquiry${data.ref ? ` (${data.ref})` : ''} — Granciare Estate`, html);
 }
 
 // ── Main handler ──────────────────────────────────────────────
@@ -255,8 +280,28 @@ export default async function handler(req, res) {
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email).trim())) {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  if (!String(name).trim()) {
+    return res.status(400).json({ error: 'Please enter your name.' });
+  }
+  const phoneStr = String(phone || '').trim();
+  const phoneDigits = phoneStr.replace(/\D/g, '');
+  if (!phoneStr || /[^\d+\s().-]/.test(phoneStr) || phoneDigits.length < 6 || phoneDigits.length > 15) {
+    return res.status(400).json({ error: 'Please enter a valid phone number.' });
+  }
+  const YMD = /^\d{4}-\d{2}-\d{2}$/;
+  if (!YMD.test(checkIn || '') || !YMD.test(checkOut || '')) {
+    return res.status(400).json({ error: 'Please select your check-in and check-out dates.' });
+  }
+  const stayNights = Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86400000);
+  if (!(stayNights >= 2 && stayNights <= 30)) {
+    return res.status(400).json({ error: 'Stays must be between 2 and 30 nights.' });
+  }
+  const totalGuests = (parseInt(adults, 10) || 0) + (parseInt(children, 10) || 0);
+  if ((parseInt(adults, 10) || 0) < 1 || totalGuests > 16) {
+    return res.status(400).json({ error: 'Please choose between 1 and 16 guests, with at least one adult.' });
   }
 
   const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'NOTIFY_EMAIL'];
@@ -267,8 +312,8 @@ export default async function handler(req, res) {
   }
 
   const data = {
-    name:            name.trim(),
-    email:           email.trim(),
+    name:            String(name).trim().slice(0, 200),
+    email:           String(email).trim().slice(0, 200),
     phone,
     checkIn,
     checkOut,
@@ -276,7 +321,7 @@ export default async function handler(req, res) {
     children,        // number (new format) or undefined (old format)
     guests,          // string (old format) or undefined (new format)
     specialRequests, // string (new format) or undefined (old format)
-    message:         message || '',
+    message:         String(message || '').slice(0, 3000),
     source:          source  || 'granciare.com',
   };
 
@@ -285,7 +330,7 @@ export default async function handler(req, res) {
     const sb = getServerClient();
     if (!sb) {
       console.error('stay_requests insert skipped: Supabase env vars not set');
-      return false;
+      return null;
     }
     const base = {
       name:             data.name,
@@ -299,28 +344,33 @@ export default async function handler(req, res) {
       status:           'enquiry',
     };
     // The guest's free-text note lives in `message` (older schema: `notes`).
-    let { error: sbErr } = await sb.from('stay_requests').insert({ ...base, message: data.message || null });
+    let { data: row, error: sbErr } = await sb.from('stay_requests').insert({ ...base, message: data.message || null }).select('id').single();
     if (sbErr && /message/i.test(sbErr.message || '')) {
-      ({ error: sbErr } = await sb.from('stay_requests').insert({ ...base, notes: data.message || null }));
+      ({ data: row, error: sbErr } = await sb.from('stay_requests').insert({ ...base, notes: data.message || null }).select('id').single());
     }
     if (sbErr) {
       console.error('stay_requests insert error:', sbErr.message, hasServiceKey ? '' : '(no service key set — insert ran with the anon key)');
-      return false;
+      return null;
     }
+    // Reference shown to the guest and in admin — derived from the row id
+    data.ref = 'GRC-' + String(row.id).replace(/-/g, '').slice(0, 6).toUpperCase();
     await notify(sb, {
       type: 'stay_request', title: 'New stay enquiry',
-      body: `${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
+      body: `${data.ref} · ${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
+      related_id: row.id,
     });
-    return true;
+    return data.ref;
   }
 
   try {
-    const [, , stored] = await Promise.all([
+    // Store first so the reference can go into the emails and the sheet
+    const ref = await saveToSupabase();
+    const [, , guestEmailed] = await Promise.all([
       appendToSheet(data),
       sendNotificationEmail(data),
-      saveToSupabase(),
+      sendGuestAcknowledgement(data).catch(e => { console.error('guest email failed:', e.message); return false; }),
     ]);
-    return res.status(200).json({ success: true, stored, message: 'Enquiry received. We will be in touch shortly.' });
+    return res.status(200).json({ success: true, stored: Boolean(ref), ref: ref || null, guestEmailed: Boolean(guestEmailed), message: 'Enquiry received. We will be in touch shortly.' });
   } catch (err) {
     console.error('Enquiry handler error:', err);
     return res.status(500).json({ error: `Internal error: ${err.message}` });

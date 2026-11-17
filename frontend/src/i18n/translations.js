@@ -3,6 +3,8 @@
  * Languages: English (en), Italian (it), Spanish (es), French (fr), Portuguese (pt), Czech (cs)
  */
 
+import extra from './translations.extra';
+
 const translations = {
 
   /* ─────────────────────────────────────────────
@@ -454,7 +456,7 @@ const translations = {
                  fr: 'Commencez à l\'aube parmi 7 000 oliviers. Votre guide explique les trois variétés patrimoniales — Frantoio, Leccino et Moraiolo —, le cycle de récolte et le micro-climat qui rend l\'huile ombrienne singulière.',
                  pt: 'Comece ao amanhecer entre 7.000 oliveiras. O seu guia explica as três variedades patrimoniais — Frantoio, Leccino e Moraiolo —, o ciclo de colheita e o micro-clima que torna o azeite úmbrico singular.',
                  cs: 'Začněte za úsvitu mezi 7 000 olivovníky. Váš průvodce vysvětlí tři dědičné odrůdy — Frantoio, Leccino a Moraiolo —, cyklus sklizně a mikroklimat, který dělá umberský olej jedinečným.' },
-        img: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=700&q=80' },
+        img: '/images/olive-oil/olive-grove-autumn.jpeg' },
       { num: '02',
         title: { en: 'The Harvest',       it: 'La Raccolta',                    es: 'La Cosecha',                         fr: 'La Récolte',                     pt: 'A Colheita',                         cs: 'Sklizeň'                          },
         desc:  { en: 'Depending on season, you may participate in the harvest itself — hand-picking olives as generations before you have done. A deeply physical, deeply meditative experience.',
@@ -463,7 +465,7 @@ const translations = {
                  fr: 'Selon la saison, vous pourrez participer à la récolte elle-même — en cueillant les olives à la main comme les générations précédentes. Une expérience profondément physique et méditative.',
                  pt: 'Dependendo da época, pode participar na própria colheita — apanhando azeitonas à mão como as gerações anteriores fizeram. Uma experiência profundamente física e meditativa.',
                  cs: 'Podle sezóny se můžete zúčastnit samotné sklizně — ručního trhání oliv jako generace před vámi. Hluboce fyzický a meditativní zážitek.' },
-        img: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=700&q=80' },
+        img: '/images/olive-oil/olive-harvest-fallen-olives.jpeg' },
       { num: '03',
         title: { en: 'The Cold Press',    it: 'La Spremitura a Freddo',         es: 'El Prensado en Frío',                fr: 'La Pression à Froid',            pt: 'A Prensagem a Frio',                 cs: 'Lisování za Studena'              },
         desc:  { en: 'Inside the mill, watch the olives transformed within hours of picking. The cold-press process extracts oil at its most vibrant — you smell the difference immediately.',
@@ -472,7 +474,7 @@ const translations = {
                  fr: 'À l\'intérieur du moulin, regardez les olives se transformer dans les heures suivant la cueillette. Le processus de pression à froid extrait l\'huile à son état le plus vibrant — vous en sentez la différence immédiatement.',
                  pt: 'Dentro do lagar, observe as azeitonas transformarem-se horas após a colheita. O processo de pressão a frio extrai o azeite na sua forma mais vibrante — sente-se a diferença imediatamente.',
                  cs: 'Uvnitř mlýna sledujte přeměnu oliv v průběhu hodin po sklizni. Proces lisování za studena extrahuje olej v jeho nejživějším stavu — rozdíl ucítíte okamžitě.' },
-        img: 'https://images.unsplash.com/photo-1515023115689-589c33041d3c?w=700&q=80' },
+        img: '/images/olive-oil/olive-oil-extraction-centrifuge-flow.jpeg' },
       { num: '04',
         title: { en: 'The Bottling Plant',it: 'L\'Impianto di Imbottigliamento', es: 'La Planta de Embotellado',         fr: 'L\'Usine d\'Embouteillage',      pt: 'A Fábrica de Engarrafamento',        cs: 'Stáčírna'                         },
         desc:  { en: 'Our working industrial bottling facility is unlike anything open to guests anywhere in Italy. A behind-the-scenes look at how artisan oil meets modern precision.',
@@ -481,7 +483,7 @@ const translations = {
                  fr: 'Notre installation d\'embouteillage industrielle en activité est unique parmi celles ouvertes aux visiteurs en Italie. Un regard dans les coulisses sur la façon dont l\'huile artisanale rencontre la précision moderne.',
                  pt: 'A nossa instalação industrial de engarrafamento em funcionamento é única entre as acessíveis a visitantes em toda a Itália. Um olhar nos bastidores sobre como o azeite artesanal encontra a precisão moderna.',
                  cs: 'Naše fungující průmyslová stáčírna je jedinečná mezi těmi přístupnými hostům kdekoli v Itálii. Pohled zákulisí na to, jak se řemeslný olej setkává s moderní přesností.' },
-        img: 'https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=700&q=80' },
+        img: '/images/olive-oil/olive-oil-bottling-pallets.jpeg' },
       { num: '05',
         title: { en: 'The Tasting',       it: 'La Degustazione',                es: 'La Cata',                            fr: 'La Dégustation',                 pt: 'A Prova',                            cs: 'Degustace'                        },
         desc:  { en: 'A guided tasting of Solivé — poured over warm Umbrian bread. Brilliant green with golden reflections. Fresh artichoke and arugula on the nose. Almond with a whisper of pink peppercorn on the palate. Leave with a bottle of your own.',
@@ -490,7 +492,7 @@ const translations = {
                  fr: 'Une dégustation guidée du Solivé — versé sur du pain ombrien chaud. Vert brillant aux reflets dorés. Artichaut frais et roquette au nez. Amande avec un murmure de poivre rose en bouche. Repartez avec votre propre bouteille.',
                  pt: 'Uma prova guiada do Solivé — vertido sobre pão úmbrico quente. Verde brilhante com reflexos dourados. Alcachofra fresca e rúcula no nariz. Amêndoa com um sussurro de pimenta rosa no palato. Parte com a sua própria garrafa.',
                  cs: 'Řízená degustace Solivé — přelitého přes teplý umberský chléb. Zářivě zelený se zlatými odlesky. Čerstvý artyčok a rukola v nose. Mandle s nádechem růžového pepře na patře. Odcházíte se svou vlastní lahví.' },
-        img: 'https://images.unsplash.com/photo-1516253593875-bd7ba052fbc5?w=700&q=80' },
+        img: '/images/olive-oil/solivé-bottle-product.jpeg' },
     ],
     facts: [
       { number: '7,000', label: { en: 'Olive Trees on the Estate',             it: 'Ulivi sulla Tenuta',                           es: 'Olivos en la Finca',                             fr: 'Oliviers sur le Domaine',              pt: 'Oliveiras na Herdade',                   cs: 'Olivovníků na Statku'                    } },
@@ -891,5 +893,10 @@ const translations = {
   },
 
 };
+
+// Merge the extra namespaces / keys
+for (const [ns, keys] of Object.entries(extra)) {
+  translations[ns] = { ...(translations[ns] || {}), ...keys };
+}
 
 export default translations;

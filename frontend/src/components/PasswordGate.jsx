@@ -5,9 +5,14 @@ import './PasswordGate.css';
 
 const SESSION_KEY = '_gc_auth';
 
+const SESSION_DAYS = 7;
+
+// Sign-in is remembered in this browser (all tabs) for SESSION_DAYS
 export function isAuthenticated() {
   try {
-    return sessionStorage.getItem(SESSION_KEY) === '1';
+    if (sessionStorage.getItem(SESSION_KEY) === '1') return true;
+    const until = Number(localStorage.getItem(SESSION_KEY) || 0);
+    return until > Date.now();
   } catch {
     return false;
   }
@@ -23,6 +28,10 @@ export default function PasswordGate({ onAuth }) {
     e.preventDefault();
     if (loading) return;
     setError('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/gate', {
@@ -36,7 +45,10 @@ export default function PasswordGate({ onAuth }) {
         setLoading(false);
         return;
       }
-      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
+      try {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        localStorage.setItem(SESSION_KEY, String(Date.now() + SESSION_DAYS * 86400000));
+      } catch {}
       setLoading(false);
       onAuth();
     } catch {

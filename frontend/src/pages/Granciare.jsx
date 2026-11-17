@@ -140,18 +140,28 @@ export default function Granciare() {
       });
   }, []);
 
+  // Cards visible at once (3 on desktop, 1 on narrow screens); the carousel
+  // stops at the last full view so it never shows blank space.
+  const [perView, setPerView] = useState(() => (typeof window !== 'undefined' && window.innerWidth <= 900 ? 1 : 3));
+  useEffect(() => {
+    const onResize = () => setPerView(window.innerWidth <= 900 ? 1 : 3);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const maxIdx = Math.max(0, testimonials.length - perView);
+  useEffect(() => { setCarouselIdx(i => Math.min(i, maxIdx)); }, [maxIdx]);
+
   // Auto-advance carousel every 5 s
   useEffect(() => {
-    const n = testimonials.length;
-    if (n <= 3) return;
+    if (maxIdx === 0) return undefined;
     const timer = setInterval(() => {
-      setCarouselIdx(i => (i + 1) % n);
+      setCarouselIdx(i => (i >= maxIdx ? 0 : i + 1));
     }, 5000);
     return () => clearInterval(timer);
-  }, [testimonials.length]);
+  }, [maxIdx]);
 
-  const prevSlide = () => setCarouselIdx(i => (i - 1 + testimonials.length) % testimonials.length);
-  const nextSlide = () => setCarouselIdx(i => (i + 1) % testimonials.length);
+  const prevSlide = () => setCarouselIdx(i => (i <= 0 ? maxIdx : i - 1));
+  const nextSlide = () => setCarouselIdx(i => (i >= maxIdx ? 0 : i + 1));
 
   // Site config stats (fetched from Supabase site_config table)
   const [gStats, setGStats] = useState({
@@ -320,10 +330,10 @@ export default function Granciare() {
           <div className="testimonials__carousel">
             <div
               className="testimonials__track"
-              style={{ transform: `translateX(-${carouselIdx * (100 / testimonials.length)}%)` }}
+              style={{ transform: `translateX(-${carouselIdx * (100 / perView)}%)` }}
             >
               {testimonials.map((item, i) => (
-                <div key={i} className="testimonial-card" style={{ flex: `0 0 calc(100% / 3)` }}>
+                <div key={i} className="testimonial-card" style={{ flex: `0 0 calc(100% / ${perView})` }}>
                   <div className="testimonial-card__stars">
                     {'★'.repeat(item.rating || 5)}
                   </div>
@@ -335,11 +345,11 @@ export default function Granciare() {
                 </div>
               ))}
             </div>
-            {testimonials.length > 3 && (
+            {maxIdx > 0 && (
               <div className="testimonials__nav">
                 <button className="testimonials__btn" onClick={prevSlide} aria-label="Previous">‹</button>
                 <div className="testimonials__dots">
-                  {testimonials.map((_, i) => (
+                  {Array.from({ length: maxIdx + 1 }, (_, i) => (
                     <button
                       key={i}
                       className={`testimonials__dot${i === carouselIdx ? ' testimonials__dot--active' : ''}`}
@@ -398,20 +408,20 @@ export default function Granciare() {
                   </span>
                   <div>
                     <span className="contact-option__label">WhatsApp</span>
-                    <span className="contact-option__value">Fastest response</span>
+                    <span className="contact-option__value">{t('home.fastest')}</span>
                   </div>
                 </a>
                 <a href="mailto:info@granciare.com" className="contact-option">
                   <span className="contact-option__icon">✉</span>
                   <div>
-                    <span className="contact-option__label">Email</span>
+                    <span className="contact-option__label">{t('home.email')}</span>
                     <span className="contact-option__value">info@granciare.com</span>
                   </div>
                 </a>
                 <a href="tel:+390763630996" className="contact-option">
                   <span className="contact-option__icon">☎</span>
                   <div>
-                    <span className="contact-option__label">Phone</span>
+                    <span className="contact-option__label">{t('home.phone')}</span>
                     <span className="contact-option__value">+39 0763 630996</span>
                   </div>
                 </a>
@@ -427,9 +437,9 @@ export default function Granciare() {
         <div className="sticky-book__inner">
           <div className="sticky-book__info">
             <span className="sticky-book__name">Granciare · Allerona, Umbria</span>
-            <span className="sticky-book__sub">Private estate · Up to 16 guests</span>
+            <span className="sticky-book__sub">{t('home.stickySub')}</span>
           </div>
-          <a href="#book" className="btn btn-primary sticky-book__btn">Book Now →</a>
+          <a href="#book" className="btn btn-primary sticky-book__btn">{t('home.bookNow')}</a>
         </div>
       </div>
 

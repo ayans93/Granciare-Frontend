@@ -59,17 +59,15 @@ function buildIcal(rows) {
     const checkOut = toIcalDate(row.check_out);
     if (!checkIn || !checkOut) continue;
 
-    const guests = row.adults + (row.children || 0);
-    const summary = `BLOCKED — ${row.name ? escapeIcal(row.name) : 'Guest'} (${guests} guest${guests !== 1 ? 's' : ''})`;
-
+    // Shared with third-party calendars, so no guest names or requests
     lines.push(
       'BEGIN:VEVENT',
       `UID:${uid(row)}`,
       `DTSTAMP:${now}`,
       `DTSTART;VALUE=DATE:${checkIn}`,
       `DTEND;VALUE=DATE:${checkOut}`,
-      `SUMMARY:${summary}`,
-      `DESCRIPTION:Granciare Estate confirmed booking\\nGuests: ${guests}${row.special_requests ? '\\nRequests: ' + escapeIcal(row.special_requests) : ''}`,
+      'SUMMARY:Booked — Granciare Estate',
+      'DESCRIPTION:Confirmed stay at Granciare Estate',
       `LOCATION:Granciare Estate\\, Allerona\\, Umbria\\, Italy`,
       `STATUS:CONFIRMED`,
       `TRANSP:OPAQUE`,
@@ -108,7 +106,7 @@ export default async function handler(req, res) {
 
   const { data, error } = await sb
     .from('stay_requests')
-    .select('id, name, check_in, check_out, adults, children, special_requests')
+    .select('id, check_in, check_out')
     .eq('status', 'confirmed')
     .order('check_in', { ascending: true });
 
@@ -121,7 +119,7 @@ export default async function handler(req, res) {
 
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
   res.setHeader('Content-Disposition', 'inline; filename="granciare-bookings.ics"');
-  // Allow calendar clients to cache for 1 hour
-  res.setHeader('Cache-Control', 'public, max-age=3600');
+  // Short cache so confirmations reach other calendars within minutes
+  res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=60');
   return res.status(200).send(ical);
 }

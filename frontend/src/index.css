@@ -164,3 +164,6 @@ h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 500; line-height: 
   :root { --section-py: 56px; }
   .container { padding: 0 16px; }
 }
+
+/* In-page jump targets land below the fixed navbar */
+#book, #order, #enquire, #register, #story { scroll-margin-top: 80px; }

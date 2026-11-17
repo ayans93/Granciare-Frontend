@@ -83,7 +83,7 @@ const COUNTRIES = [
 // Default to Italy
 const DEFAULT = COUNTRIES.find(c => c.code === 'IT');
 
-export default function PhoneInput({ value, onChange }) {
+export default function PhoneInput({value, onChange, placeholder = 'Mobile number', searchPlaceholder = 'Search country or code…' }) {
   const [selected, setSelected] = useState(DEFAULT);
   const [number, setNumber] = useState(value || '');
   const [open, setOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function PhoneInput({ value, onChange }) {
                 className="phone-input__search"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search country or code…"
+                placeholder={searchPlaceholder}
               />
               {search && (
                 <button type="button" className="phone-input__search-clear" onClick={() => setSearch('')}>×</button>
@@ -192,7 +192,7 @@ export default function PhoneInput({ value, onChange }) {
         className="phone-input__number"
         value={number}
         onChange={e => setNumber(e.target.value)}
-        placeholder="Mobile number"
+        placeholder={placeholder}
       />
     </div>
   );

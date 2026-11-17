@@ -35,7 +35,8 @@ const FEATURED_SECTIONS = {
   olive_oil:   'Olive Oil',
 }
 
-const OIL_QUANTITIES = [1, 5, 12, 25, 50, 100]
+// Orderable tiers (minimum order is 5 bottles)
+const OIL_QUANTITIES = [5, 12, 25, 50, 100]
 
 const VILLA_PRICING_DEFAULTS = [
   { label: 'Low Season',          date_from: '2027-01-01', date_to: '2027-03-31', price_per_night: 2000 },
@@ -51,6 +52,12 @@ function fmt(date) {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
+function stayRef(id) {
+  return id ? 'GRC-' + String(id).replace(/-/g, '').slice(0, 6).toUpperCase() : ''
+}
+function rangesOverlap(aFrom, aTo, bFrom, bTo) {
+  return aFrom <= bTo && bFrom <= aTo
+}
 function nights(ci, co) {
   if (!ci || !co) return 0
   return Math.round((new Date(co) - new Date(ci)) / 86400000)
@@ -64,9 +71,22 @@ async function authHeader() {
 }
 
 // ── NOTIFICATION BELL ──────────────────────────────────────
-function NotificationBell({ theme }) {
+// Read state is kept per admin (in this browser), so one admin reading an
+// alert does not clear it for the others.
+function readStore(userId) {
+  const key = `admin-notif-read-${userId}`
+  let st
+  try { st = JSON.parse(localStorage.getItem(key)) } catch {}
+  if (!st || !st.before) st = { before: new Date().toISOString(), ids: [] }  // first visit: older alerts count as read
+  const save = next => { try { localStorage.setItem(key, JSON.stringify(next)) } catch {} }
+  save(st)
+  return { st, save }
+}
+
+function NotificationBell({ theme, userId }) {
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState([])
+  const [readState, setReadState] = useState(() => readStore(userId).st)
   const ref = useRef()
 
   useEffect(() => {
@@ -92,21 +112,16 @@ function NotificationBell({ theme }) {
     setNotes(data || [])
   }
 
-  async function markRead(id) {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
-    fetchNotifs()
-  }
+  const isRead = n => n.created_at <= readState.before || readState.ids.includes(n.id)
+  function persist(next) { readStore(userId).save(next); setReadState(next) }
+  function markRead(id) { if (!readState.ids.includes(id)) persist({ ...readState, ids: [...readState.ids, id].slice(-200) }) }
+  function markAllRead() { persist({ before: new Date().toISOString(), ids: [] }) }
 
-  async function markAllRead() {
-    await supabase.from('notifications').update({ is_read: true }).eq('is_read', false)
-    fetchNotifs()
-  }
-
-  const unread = notes.filter(n => !n.is_read).length
+  const unread = notes.filter(n => !isRead(n)).length
 
   return (
     <div className="notif-wrap" ref={ref}>
-      <button className="notif-btn" onClick={() => setOpen(o => !o)}>
+      <button className="notif-btn" onClick={() => setOpen(o => !o)} aria-label="Notifications">
         🔔
         {unread > 0 && <span className="notif-badge">{unread}</span>}
       </button>
@@ -118,7 +133,7 @@ function NotificationBell({ theme }) {
           </div>
           {notes.length === 0 && <p className="notif-empty">No notifications</p>}
           {notes.map(n => (
-            <div key={n.id} className={`notif-item ${!n.is_read ? 'notif-item--unread' : ''}`} onClick={() => markRead(n.id)}>
+            <div key={n.id} className={`notif-item ${!isRead(n) ? 'notif-item--unread' : ''}`} onClick={() => markRead(n.id)}>
               <p className="notif-title">{n.title}</p>
               {n.body && <p className="notif-body">{n.body}</p>}
               <p className="notif-time">{fmt(n.created_at)}</p>
@@ -201,8 +216,9 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
         <tr className="req-detail">
           <td colSpan={isStay ? 7 : 6}>
             <div className="req-detail-inner">
+              {isStay && <p><strong>Reference:</strong> {stayRef(row.id)}</p>}
               {row.phone && <p><strong>Phone:</strong> {row.phone}</p>}
-              {row.message && <p><strong>Message:</strong> {row.message}</p>}
+              {(row.message || row.notes) && <p className="req-message"><strong>Message:</strong> {row.message || row.notes}</p>}
               {row.special_requests && <p><strong>Special requests:</strong> {row.special_requests}</p>}
               <NotesPanel
                 table={isStay ? 'stay_request_notes' : 'oil_request_notes'}
@@ -252,7 +268,7 @@ function StayRequests({ adminName }) {
           ))}
         </div>
       </div>
-      {rows.length === 0 ? <p className="empty-state">No stay requests yet.</p> : (
+      {rows.length === 0 ? <p className="empty-state">{filter === 'all' ? 'No stay requests yet.' : `No ${filter} stay requests.`}</p> : (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -282,7 +298,14 @@ function StayConfirmations() {
       .order('check_in').then(({ data }) => setRows(data || []))
   }, [])
 
-  const icalUrl = `${window.location.origin}/api/calendar.ics`
+  const [icalUrl, setIcalUrl] = useState(`${window.location.origin}/api/calendar.ics`)
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) }, body: JSON.stringify({ action: 'ical-url' }) })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.url) setIcalUrl(json.url)
+    })()
+  }, [])
   const [copied, setCopied] = useState(false)
   function copyIcal() {
     navigator.clipboard.writeText(icalUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
@@ -316,7 +339,7 @@ function StayConfirmations() {
                 <span className="confirm-nights">{nights(r.check_in, r.check_out)} nights</span>
               </div>
               <div className="confirm-card__body">
-                <p className="confirm-name">{r.name}</p>
+                <p className="confirm-name">{r.name} <span className="confirm-ref">{stayRef(r.id)}</span></p>
                 <p className="confirm-meta">{r.email} {r.phone && `· ${r.phone}`}</p>
                 <p className="confirm-guests">{r.adults} adults{r.children > 0 ? `, ${r.children} children` : ''}</p>
                 {r.special_requests && (
@@ -324,7 +347,7 @@ function StayConfirmations() {
                     <span>Special requests:</span> {r.special_requests}
                   </div>
                 )}
-                {r.message && <p className="confirm-msg">"{r.message}"</p>}
+                {(r.message || r.notes) && <p className="confirm-msg">"{r.message || r.notes}"</p>}
               </div>
               <div className="confirm-card__footer">
                 Booked {fmt(r.created_at)}
@@ -372,7 +395,7 @@ function OilRequests({ adminName }) {
           ))}
         </div>
       </div>
-      {rows.length === 0 ? <p className="empty-state">No oil requests yet.</p> : (
+      {rows.length === 0 ? <p className="empty-state">{filter === 'all' ? 'No oil requests yet.' : `No ${filter} oil requests.`}</p> : (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -442,7 +465,8 @@ function Photos() {
   useEffect(() => { fetchPhotos() }, [tab, catFilter])
 
   async function fetchPhotos() {
-    let q = supabase.from('photos').select('*').in('category', tab === 'stay' ? stayCategories : oilCategories).order('created_at', { ascending: false })
+    let q = supabase.from('photos').select('*').in('category', tab === 'stay' ? stayCategories : oilCategories)
+      .order('created_at', { ascending: false }).order('storage_path', { ascending: true })
     if (catFilter !== 'all') q = q.eq('category', catFilter)
     const { data } = await q
     setPhotos(data || [])
@@ -452,6 +476,7 @@ function Photos() {
     setUploading(true)
     setUploadErr('')
     const failed = []
+    const guessed = []
     for (const file of Array.from(files)) {
       try {
         const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -466,13 +491,25 @@ function Photos() {
         const { error } = await supabase.from('photos').insert({ storage_path: path, public_url: json.publicUrl, category: json.category, alt_text: file.name })
         if (error) throw new Error(error.message)
         await supabase.from('notifications').insert({ type: 'photo_added', title: 'New photo added', body: `Category: ${json.category}` })
+        if (json.categorised === false) guessed.push(file.name)
       } catch (e) {
         failed.push(`${file.name}: ${e.message}`)
       }
     }
     if (failed.length) setUploadErr(`Could not upload ${failed.join(' · ')}`)
+    else if (guessed.length) setUploadErr(`The category could not be detected for ${guessed.join(', ')} — please check it below.`)
     if (fileRef.current) fileRef.current.value = ''
     setUploading(false)
+    fetchPhotos()
+  }
+
+  async function changeCategory(photo, category) {
+    const patch = { category }
+    if (photo.is_featured && !FEATURED_SECTIONS[category]) patch.is_featured = false
+    if (photo.is_featured && FEATURED_SECTIONS[category]) {
+      await supabase.from('photos').update({ is_featured: false }).eq('category', category).neq('id', photo.id)
+    }
+    await supabase.from('photos').update(patch).eq('id', photo.id)
     fetchPhotos()
   }
 
@@ -531,7 +568,9 @@ function Photos() {
             <div key={p.id} className={`photo-card ${p.is_featured ? 'photo-card--featured' : ''}`}>
               <img src={p.public_url} alt={p.alt_text} loading="lazy" />
               <div className="photo-card__info">
-                <span className="photo-cat">{p.category.replace('_', ' ')}</span>
+                <select className="photo-cat-select" value={p.category} onChange={e => changeCategory(p, e.target.value)} aria-label="Photo category">
+                  {activeCats.map(c => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
+                </select>
                 {p.is_featured && <span className="photo-featured-badge">Featured</span>}
               </div>
               <div className="photo-card__actions">
@@ -551,22 +590,50 @@ function Photos() {
 }
 
 // ── TESTIMONIALS TAB ──────────────────────────────────────
+const EMPTY_TESTIMONIAL = { reviewer_name: '', location: '', rating: 5, review_text: '', stay_date: '' }
 function Testimonials() {
   const [rows, setRows] = useState([])
-  const [form, setForm] = useState({ reviewer_name: '', location: '', rating: 5, review_text: '', stay_date: '' })
-  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState(EMPTY_TESTIMONIAL)
+  const [editingId, setEditingId] = useState(null)   // null = closed, 'new' = adding, id = editing
+  const [err, setErr] = useState('')
 
   useEffect(() => { fetchRows() }, [])
 
+  // Same order as the home page carousel
   async function fetchRows() {
-    const { data } = await supabase.from('testimonials').select('*').order('sort_order').order('created_at', { ascending: false })
+    const { data } = await supabase.from('testimonials').select('*').order('sort_order', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true })
     setRows(data || [])
   }
 
+  function startAdd() { setForm(EMPTY_TESTIMONIAL); setEditingId(editingId === 'new' ? null : 'new'); setErr('') }
+  function startEdit(r) {
+    setForm({ reviewer_name: r.reviewer_name || '', location: r.location || '', rating: r.rating || 5, review_text: r.review_text || '', stay_date: r.stay_date || '' })
+    setEditingId(r.id); setErr('')
+  }
+  function cancel() { setEditingId(null); setForm(EMPTY_TESTIMONIAL); setErr('') }
+
   async function save() {
-    await supabase.from('testimonials').insert(form)
-    setForm({ reviewer_name: '', location: '', rating: 5, review_text: '', stay_date: '' })
-    setAdding(false)
+    const clean = {
+      reviewer_name: form.reviewer_name.trim(), location: form.location.trim(),
+      stay_date: form.stay_date.trim(), review_text: form.review_text.trim(), rating: Number(form.rating) || 5,
+    }
+    if (!clean.reviewer_name || !clean.review_text) { setErr('Name and review text are required.'); return }
+    if (clean.review_text.length > 600) { setErr('Please keep the review under 600 characters so it fits the carousel.'); return }
+    const { error } = editingId === 'new'
+      ? await supabase.from('testimonials').insert({ ...clean, sort_order: rows.length })
+      : await supabase.from('testimonials').update(clean).eq('id', editingId)
+    if (error) { setErr(error.message); return }
+    cancel()
+    fetchRows()
+  }
+
+  async function move(index, dir) {
+    const next = [...rows]
+    const j = index + dir
+    if (j < 0 || j >= next.length) return
+    ;[next[index], next[j]] = [next[j], next[index]]
+    setRows(next)
+    await Promise.all(next.map((r, i) => r.sort_order === i ? null : supabase.from('testimonials').update({ sort_order: i }).eq('id', r.id)))
     fetchRows()
   }
 
@@ -574,51 +641,54 @@ function Testimonials() {
     await supabase.from('testimonials').update({ is_visible: !val }).eq('id', id)
     fetchRows()
   }
-
   async function remove(id) {
     if (!confirm('Delete this testimonial?')) return
     await supabase.from('testimonials').delete().eq('id', id)
     fetchRows()
   }
 
+  const formCard = (
+    <div className="form-card">
+      <div className="form-row">
+        <input placeholder="Reviewer name *" maxLength={80} value={form.reviewer_name} onChange={e => setForm({ ...form, reviewer_name: e.target.value })} />
+        <input placeholder="Location (e.g. London, UK)" maxLength={80} value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+      </div>
+      <div className="form-row">
+        <input placeholder="Stay date (e.g. October 2026)" maxLength={40} value={form.stay_date} onChange={e => setForm({ ...form, stay_date: e.target.value })} />
+        <select value={form.rating} onChange={e => setForm({ ...form, rating: Number(e.target.value) })}>
+          {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r} stars</option>)}
+        </select>
+      </div>
+      <textarea placeholder="Review text *" rows={4} maxLength={600} value={form.review_text} onChange={e => setForm({ ...form, review_text: e.target.value })} />
+      <p className="field-count">{form.review_text.length} / 600</p>
+      {err && <p className="form-err">{err}</p>}
+      <div className="form-actions">
+        <button className="btn-primary" onClick={save} disabled={!form.reviewer_name.trim() || !form.review_text.trim()}>{editingId === 'new' ? 'Save' : 'Save changes'}</button>
+        <button className="btn-ghost" onClick={cancel}>Cancel</button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Testimonials</h2>
-        <button className="btn-primary" onClick={() => setAdding(a => !a)}>+ Add testimonial</button>
+        <button className="btn-primary" onClick={startAdd}>+ Add testimonial</button>
       </div>
-
-      {adding && (
-        <div className="form-card">
-          <div className="form-row">
-            <input placeholder="Reviewer name *" value={form.reviewer_name} onChange={e => setForm({...form, reviewer_name: e.target.value})} />
-            <input placeholder="Location (e.g. London, UK)" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
-          </div>
-          <div className="form-row">
-            <input placeholder="Stay date (e.g. October 2026)" value={form.stay_date} onChange={e => setForm({...form, stay_date: e.target.value})} />
-            <select value={form.rating} onChange={e => setForm({...form, rating: Number(e.target.value)})}>
-              {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} stars</option>)}
-            </select>
-          </div>
-          <textarea placeholder="Review text *" rows={4} value={form.review_text} onChange={e => setForm({...form, review_text: e.target.value})} />
-          <div className="form-actions">
-            <button className="btn-primary" onClick={save} disabled={!form.reviewer_name || !form.review_text}>Save</button>
-            <button className="btn-ghost" onClick={() => setAdding(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
-
+      <p className="pricing-note">Shown on the home page in this order. Use the arrows to reorder.</p>
+      {editingId === 'new' && formCard}
       <div className="testimonial-list">
         {rows.length === 0 && <p className="empty-state">No testimonials yet.</p>}
-        {rows.map(r => (
+        {rows.map((r, i) => editingId === r.id ? <div key={r.id}>{formCard}</div> : (
           <div key={r.id} className={`testimonial-row ${!r.is_visible ? 'testimonial-row--hidden' : ''}`}>
             <div className="testimonial-stars">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
             <p className="testimonial-text">"{r.review_text}"</p>
             <p className="testimonial-meta">— {r.reviewer_name}{r.location ? `, ${r.location}` : ''}{r.stay_date ? ` · ${r.stay_date}` : ''}</p>
             <div className="testimonial-actions">
-              <button className="btn-sm" onClick={() => toggleVisible(r.id, r.is_visible)}>
-                {r.is_visible ? 'Hide' : 'Show'}
-              </button>
+              <button className="btn-sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+              <button className="btn-sm" onClick={() => move(i, 1)} disabled={i === rows.length - 1} aria-label="Move down">↓</button>
+              <button className="btn-sm" onClick={() => startEdit(r)}>Edit</button>
+              <button className="btn-sm" onClick={() => toggleVisible(r.id, r.is_visible)}>{r.is_visible ? 'Hide' : 'Show'}</button>
               <button className="btn-sm btn-sm--danger" onClick={() => remove(r.id)}>Delete</button>
             </div>
           </div>
@@ -638,6 +708,20 @@ function Pricing() {
   const [addingRange, setAddingRange] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editRow, setEditRow] = useState({})
+  const [priceErr, setPriceErr] = useState('')
+  const [rangeErr, setRangeErr] = useState('')
+
+  // Returns an error message, or '' if the range is valid
+  function validateRange(r, ignoreId) {
+    const price = parseFloat(r.price_per_night)
+    if (!String(r.label || '').trim()) return 'Please give the range a label.'
+    if (!r.date_from || !r.date_to) return 'Please choose both dates.'
+    if (r.date_to < r.date_from) return 'The end date is before the start date.'
+    if (!(price > 0)) return 'The nightly rate must be above €0.'
+    const clash = villaPrices.find(v => v.id !== ignoreId && rangesOverlap(r.date_from, r.date_to, v.date_from, v.date_to))
+    if (clash) return `These dates overlap "${clash.label}" (${fmt(clash.date_from)} – ${fmt(clash.date_to)}).`
+    return ''
+  }
 
   useEffect(() => {
     supabase.from('oil_pricing').select('*').order('quantity').then(({ data }) => {
@@ -654,10 +738,13 @@ function Pricing() {
   }
 
   async function saveAllOilPrices() {
+    setPriceErr('')
+    const bad = OIL_QUANTITIES.filter(q => !(parseFloat(oilPrices[q]) > 0))
+    if (bad.length) { setPriceErr(`Enter a price above €0 for: ${bad.map(q => `${q} bottles`).join(', ')}.`); return }
     setOilSaving(true)
     const upserts = OIL_QUANTITIES.map(qty => ({
       quantity: qty,
-      price_per_bottle: parseFloat(oilPrices[qty]) || 0,
+      price_per_bottle: Math.round(parseFloat(oilPrices[qty]) * 100) / 100,
       updated_at: new Date().toISOString(),
     }))
     await supabase.from('oil_pricing').upsert(upserts)
@@ -668,7 +755,10 @@ function Pricing() {
   }
 
   async function addVillaRange() {
-    await supabase.from('villa_pricing').insert({ ...newRange, price_per_night: parseFloat(newRange.price_per_night) })
+    const msg = validateRange(newRange)
+    setRangeErr(msg)
+    if (msg) return
+    await supabase.from('villa_pricing').insert({ ...newRange, label: newRange.label.trim(), price_per_night: parseFloat(newRange.price_per_night) })
     await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Villa pricing updated', body: `New range: ${newRange.label}` })
     setNewRange({ label: '', date_from: '', date_to: '', price_per_night: '' })
     setAddingRange(false)
@@ -682,8 +772,11 @@ function Pricing() {
   }
 
   async function updateVillaRange(id) {
+    const msg = validateRange(editRow, id)
+    setRangeErr(msg)
+    if (msg) return
     await supabase.from('villa_pricing').update({
-      label: editRow.label,
+      label: editRow.label.trim(),
       date_from: editRow.date_from,
       date_to: editRow.date_to,
       price_per_night: parseFloat(editRow.price_per_night),
@@ -707,7 +800,7 @@ function Pricing() {
         {/* Olive oil pricing */}
         <div className="pricing-block">
           <h3>Olive Oil Bottle Pricing</h3>
-          <p className="pricing-note">Set price per bottle for each quantity tier.</p>
+          <p className="pricing-note">Set the price per bottle for each tier. Custom quantities use the price of the largest tier they reach; "Save %" is measured against the 5-bottle price.</p>
           <table className="data-table pricing-table">
             <thead><tr><th>Quantity</th><th>Price per bottle (€)</th></tr></thead>
             <tbody>
@@ -716,7 +809,7 @@ function Pricing() {
                   <td>{qty} bottle{qty > 1 ? 's' : ''}</td>
                   <td>
                     <input
-                      type="number" step="0.50" min="0"
+                      type="number" step="0.50" min="0.5"
                       value={oilPrices[qty] || ''}
                       onChange={e => setOilPrices({ ...oilPrices, [qty]: e.target.value })}
                       className="price-input"
@@ -726,6 +819,7 @@ function Pricing() {
               ))}
             </tbody>
           </table>
+          {priceErr && <p className="form-err">{priceErr}</p>}
           <div className="pricing-save-row">
             <button className="btn-primary" onClick={saveAllOilPrices} disabled={oilSaving}>
               {oilSaving ? 'Saving…' : oilSaved ? '✓ Saved' : 'Save all prices'}
@@ -737,9 +831,10 @@ function Pricing() {
         <div className="pricing-block">
           <div className="pricing-block-header">
             <h3>Villa Pricing</h3>
-            <button className="btn-primary btn-sm-ver" onClick={() => { setAddingRange(a => !a); setEditingId(null) }}>+ Add range</button>
+            <button className="btn-primary btn-sm-ver" onClick={() => { setAddingRange(a => !a); setEditingId(null); setRangeErr('') }}>+ Add range</button>
           </div>
-          <p className="pricing-note">Set price per night for specific date ranges (peak season, shoulder, etc.)</p>
+          <p className="pricing-note">Set price per night for specific date ranges (peak season, shoulder, etc.). Ranges cannot overlap; dates without a range show "Price on request" on the website.</p>
+          {rangeErr && <p className="form-err">{rangeErr}</p>}
 
           {addingRange && (
             <div className="form-card">
@@ -753,7 +848,7 @@ function Pricing() {
               </div>
               <div className="form-actions">
                 <button className="btn-primary" onClick={addVillaRange} disabled={!newRange.label || !newRange.date_from || !newRange.date_to || !newRange.price_per_night}>Save range</button>
-                <button className="btn-ghost" onClick={() => setAddingRange(false)}>Cancel</button>
+                <button className="btn-ghost" onClick={() => { setAddingRange(false); setRangeErr('') }}>Cancel</button>
               </div>
             </div>
           )}
@@ -777,7 +872,7 @@ function Pricing() {
                       <td><input type="number" value={editRow.price_per_night} onChange={e => setEditRow({...editRow, price_per_night: e.target.value})} className="price-input" /></td>
                       <td className="row-actions">
                         <button className="btn-sm btn-sm--save" onClick={() => updateVillaRange(r.id)}>Save</button>
-                        <button className="btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
+                        <button className="btn-sm" onClick={() => { setEditingId(null); setRangeErr('') }}>Cancel</button>
                       </td>
                     </tr>
                   ) : (
@@ -840,9 +935,10 @@ function Leads() {
 }
 
 // ── USER MANAGEMENT TAB ───────────────────────────────────
-function Users({ adminName }) {
+const EMPTY_USER = { name: '', email: '', password: '' }
+function Users({ adminId }) {
   const [users, setUsers] = useState([])
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState(EMPTY_USER)
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -854,53 +950,78 @@ function Users({ adminName }) {
     setUsers(data || [])
   }
 
-  async function createUser() {
-    setSaving(true); setErr('')
-    const res = await fetch('/api/admin-create-user', {
+  async function callAdmin(payload) {
+    const res = await fetch('/api/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     })
-    const json = await res.json()
-    if (!res.ok) { setErr(json.error || 'Failed to create user'); setSaving(false); return }
-    setForm({ name: '', email: '', password: '' })
-    setAdding(false)
-    setSaving(false)
-    fetchUsers()
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(json.error || 'Something went wrong')
+    return json
   }
+
+  async function createUser() {
+    setErr('')
+    if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
+    setSaving(true)
+    try {
+      await callAdmin({ action: 'create-user', ...form })
+      closeForm()
+      fetchUsers()
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeUser(u) {
+    if (!confirm(`Remove ${u.name || u.email} as an admin? They will no longer be able to sign in.`)) return
+    setErr('')
+    try {
+      await callAdmin({ action: 'delete-user', id: u.id })
+      fetchUsers()
+    } catch (e) {
+      setErr(e.message)
+    }
+  }
+
+  function closeForm() { setAdding(false); setForm(EMPTY_USER); setErr('') }
 
   return (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Admin Users</h2>
-        <button className="btn-primary" onClick={() => setAdding(a => !a)}>+ Add user</button>
+        <button className="btn-primary" onClick={() => (adding ? closeForm() : setAdding(true))}>+ Add user</button>
       </div>
-
       {adding && (
         <div className="form-card">
           <div className="form-row">
-            <input placeholder="Full name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-            <input placeholder="Email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+            <input placeholder="Full name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            <input placeholder="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
           </div>
-          <input placeholder="Temporary password" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-          {err && <p className="form-err">{err}</p>}
+          <input placeholder="Temporary password (min 8 characters)" type="password" autoComplete="new-password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
           <div className="form-actions">
-            <button className="btn-primary" onClick={createUser} disabled={saving || !form.name || !form.email || !form.password}>
+            <button className="btn-primary" onClick={createUser} disabled={saving || !form.name.trim() || !form.email.trim() || !form.password}>
               {saving ? 'Creating…' : 'Create user'}
             </button>
-            <button className="btn-ghost" onClick={() => { setAdding(false); setErr('') }}>Cancel</button>
+            <button className="btn-ghost" onClick={closeForm}>Cancel</button>
           </div>
         </div>
       )}
-
+      {err && <p className="form-err">{err}</p>}
       <table className="data-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Added</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Added</th><th></th></tr></thead>
         <tbody>
           {users.map(u => (
             <tr key={u.id}>
-              <td>{u.name} {u.name === adminName && <span className="you-badge">you</span>}</td>
+              <td>{u.name} {u.id === adminId && <span className="you-badge">you</span>}</td>
               <td>{u.email}</td>
               <td>{fmt(u.created_at)}</td>
+              <td className="row-actions">
+                {u.id !== adminId && <button className="btn-sm btn-sm--danger" onClick={() => removeUser(u)}>Remove</button>}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -948,144 +1069,160 @@ function AdminLogin({ theme, setTheme }) {
   )
 }
 
-// ── GRANCIARE DETAILS ─────────────────────────────────────
-function GranciareDetails() {
-  const DEFAULTS = {
-    granciare_stat1_value: '7,000',
-    granciare_stat1_label: 'Olive Trees',
-    granciare_stat2_value: '194 ha',
-    granciare_stat2_label: 'Estate Hectares',
-    granciare_stat3_value: '8',
-    granciare_stat3_label: 'Bedrooms',
-  }
-  const [config, setConfig] = useState(DEFAULTS)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
+// ── SITE CONFIG EDITOR (shared by Granciare + Solivé details) ──
+function useSiteConfig(defaults) {
+  const [config, setConfig] = useState(defaults)
   useEffect(() => {
-    supabase.from('site_config').select('key,value').in('key', Object.keys(DEFAULTS))
+    supabase.from('site_config').select('key,value').in('key', Object.keys(defaults))
       .then(({ data }) => {
         if (data && data.length) {
-          const merged = { ...DEFAULTS }
+          const merged = { ...defaults }
           data.forEach(r => { merged[r.key] = r.value })
           setConfig(merged)
         }
       })
   }, [])
+  return [config, setConfig]
+}
 
-  async function save() {
+function ConfigField({ label, value, onChange, max, hint }) {
+  return (
+    <div className="cfg-field">
+      <label className="cfg-label">{label}</label>
+      <input className="cfg-input" value={value || ''} maxLength={max} onChange={e => onChange(e.target.value)} />
+      <span className="cfg-count">{hint ? `${hint} · ` : ''}{(value || '').length} / {max}</span>
+    </div>
+  )
+}
+
+function SaveButton({ saving, saved, onClick }) {
+  return (
+    <button className="btn-primary cfg-save" onClick={onClick} disabled={saving}>
+      {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
+    </button>
+  )
+}
+
+function useSaver(config) {
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState('')
+  async function save(keys, validate) {
+    setErr('')
+    const msg = validate ? validate() : ''
+    if (msg) { setErr(msg); return }
     setSaving(true)
-    const rows = Object.entries(config).map(([key, value]) => ({ key, value }))
-    await supabase.from('site_config').upsert(rows, { onConflict: 'key' })
+    const rows = keys.map(key => ({ key, value: String(config[key] ?? '').trim() }))
+    const { error } = await supabase.from('site_config').upsert(rows, { onConflict: 'key' })
     setSaving(false)
+    if (error) { setErr(error.message); return }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
+  return { saving, saved, err, save }
+}
 
-  function field(key, label) {
-    return (
-      <div className="form-group" style={{ marginBottom: '16px' }}>
-        <label style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888', display: 'block', marginBottom: '6px' }}>{label}</label>
-        <input
-          value={config[key] || ''}
-          onChange={e => setConfig(c => ({ ...c, [key]: e.target.value }))}
-          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
-        />
-      </div>
-    )
+// ── GRANCIARE DETAILS ─────────────────────────────────────
+const STAT_KEYS = ['granciare_stat1_value', 'granciare_stat1_label', 'granciare_stat2_value', 'granciare_stat2_label', 'granciare_stat3_value', 'granciare_stat3_label']
+const DEFAULT_BOOKING_TAGS = ['Private Chef', 'Horse Riding', 'Cycling', 'Regular Cleaning', 'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions']
+function parseList(v, fallback) {
+  try { const a = JSON.parse(v); return Array.isArray(a) ? a : fallback } catch { return fallback }
+}
+
+function GranciareDetails() {
+  const [config, setConfig] = useSiteConfig({
+    granciare_stat1_value: '7,000', granciare_stat1_label: 'Olive Trees',
+    granciare_stat2_value: '194 ha', granciare_stat2_label: 'Estate Hectares',
+    granciare_stat3_value: '8',     granciare_stat3_label: 'Bedrooms',
+    booking_tags: JSON.stringify(DEFAULT_BOOKING_TAGS),
+    booking_default_tags: JSON.stringify(['Olive Oil Tour']),
+  })
+  const stats = useSaver(config)
+  const tagsSaver = useSaver(config)
+  const [newTag, setNewTag] = useState('')
+  const set = key => v => setConfig(c => ({ ...c, [key]: v }))
+
+  const tags = parseList(config.booking_tags, DEFAULT_BOOKING_TAGS)
+  const defaults = parseList(config.booking_default_tags, [])
+  const setTags = (list, defs = defaults) => setConfig(c => ({
+    ...c, booking_tags: JSON.stringify(list), booking_default_tags: JSON.stringify(defs.filter(d => list.includes(d))),
+  }))
+  function addTag() {
+    const tag = newTag.trim().slice(0, 40)
+    if (!tag || tags.some(x => x.toLowerCase() === tag.toLowerCase())) { setNewTag(''); return }
+    setTags([...tags, tag]); setNewTag('')
   }
+  const toggleDefault = tag => setConfig(c => ({ ...c, booking_default_tags: JSON.stringify(defaults.includes(tag) ? defaults.filter(d => d !== tag) : [...defaults, tag]) }))
+  const moveTag = (i, dir) => { const j = i + dir; if (j < 0 || j >= tags.length) return; const n = [...tags]; [n[i], n[j]] = [n[j], n[i]]; setTags(n) }
+
+  const validateStats = () => STAT_KEYS.some(k => !String(config[k] || '').trim()) ? 'Every value and label needs to be filled in.' : ''
 
   return (
-    <div style={{ maxWidth: 560, padding: '32px 0' }}>
-      <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
-        Edit the three headline stats shown on the Granciare page beneath the intro text.
-      </p>
-      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Stat 1</h3>
-        {field('granciare_stat1_value', 'Value (e.g. 7,000)')}
-        {field('granciare_stat1_label', 'Label (e.g. Olive Trees)')}
+    <div className="cfg-page">
+      <p className="cfg-intro">Edit the three headline stats shown on the Granciare page beneath the intro text.</p>
+      {[1, 2, 3].map(n => (
+        <div key={n} className="cfg-card">
+          <h3 className="cfg-card__title">Stat {n}</h3>
+          <ConfigField label="Value" max={12} value={config[`granciare_stat${n}_value`]} onChange={set(`granciare_stat${n}_value`)} hint="e.g. 7,000" />
+          <ConfigField label="Label" max={24} value={config[`granciare_stat${n}_label`]} onChange={set(`granciare_stat${n}_label`)} hint="e.g. Olive Trees" />
+        </div>
+      ))}
+      {stats.err && <p className="form-err">{stats.err}</p>}
+      <SaveButton saving={stats.saving} saved={stats.saved} onClick={() => stats.save(STAT_KEYS, validateStats)} />
+
+      <div className="cfg-card cfg-card--spaced">
+        <h3 className="cfg-card__title">Booking form · special-request tags</h3>
+        <p className="cfg-intro">Tags guests can pick on the booking form. ★ marks the tags that are pre-selected.</p>
+        <div className="cfg-tags">
+          {tags.map((tag, i) => (
+            <div key={tag} className={`cfg-tag ${defaults.includes(tag) ? 'cfg-tag--default' : ''}`}>
+              <button className="cfg-tag__btn" onClick={() => toggleDefault(tag)} title="Pre-select on the form">{defaults.includes(tag) ? '★' : '☆'}</button>
+              <span>{tag}</span>
+              <button className="cfg-tag__btn" onClick={() => moveTag(i, -1)} disabled={i === 0} aria-label="Move left">‹</button>
+              <button className="cfg-tag__btn" onClick={() => moveTag(i, 1)} disabled={i === tags.length - 1} aria-label="Move right">›</button>
+              <button className="cfg-tag__btn" onClick={() => setTags(tags.filter(x => x !== tag))} aria-label={`Remove ${tag}`}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div className="cfg-tag-add">
+          <input className="cfg-input" placeholder="New tag (e.g. Truffle Hunting)" maxLength={40} value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addTag() }} />
+          <button className="btn-ghost" onClick={addTag} disabled={!newTag.trim()}>Add tag</button>
+        </div>
+        {tagsSaver.err && <p className="form-err">{tagsSaver.err}</p>}
+        <SaveButton saving={tagsSaver.saving} saved={tagsSaver.saved}
+          onClick={() => tagsSaver.save(['booking_tags', 'booking_default_tags'], () => tags.length ? '' : 'Keep at least one tag.')} />
       </div>
-      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Stat 2</h3>
-        {field('granciare_stat2_value', 'Value (e.g. 194 ha)')}
-        {field('granciare_stat2_label', 'Label (e.g. Estate Hectares)')}
-      </div>
-      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Stat 3</h3>
-        {field('granciare_stat3_value', 'Value (e.g. 8)')}
-        {field('granciare_stat3_label', 'Label (e.g. Bedrooms)')}
-      </div>
-      <button className="btn-action" onClick={save} disabled={saving} style={{ minWidth: '140px' }}>
-        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
-      </button>
     </div>
   )
 }
 
 // ── SOLIVÉ DETAILS ────────────────────────────────────────
+const SOLIVE_KEYS = ['solive_acidity', 'solive_polyphenols', 'solive_harvest_year', 'solive_cultivar']
 function SoliveDetails() {
-  const DEFAULTS = {
-    solive_acidity:       '< 0.2%',
-    solive_polyphenols:   '487',
-    solive_harvest_year:  '2025',
-    solive_cultivar:      'Moraiolo',
+  const [config, setConfig] = useSiteConfig({
+    solive_acidity: '< 0.2%', solive_polyphenols: '487', solive_harvest_year: '2025', solive_cultivar: 'Moraiolo',
+  })
+  const saver = useSaver(config)
+  const set = key => v => setConfig(c => ({ ...c, [key]: v }))
+  const validate = () => {
+    if (SOLIVE_KEYS.some(k => !String(config[k] || '').trim())) return 'Every field needs to be filled in.'
+    if (!/^\d{4}$/.test(String(config.solive_harvest_year).trim())) return 'Harvest year must be a 4-digit year, e.g. 2025.'
+    return ''
   }
-  const [config, setConfig] = useState(DEFAULTS)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    supabase.from('site_config').select('key,value').in('key', Object.keys(DEFAULTS))
-      .then(({ data }) => {
-        if (data && data.length) {
-          const merged = { ...DEFAULTS }
-          data.forEach(r => { merged[r.key] = r.value })
-          setConfig(merged)
-        }
-      })
-  }, [])
-
-  async function save() {
-    setSaving(true)
-    const rows = Object.entries(config).map(([key, value]) => ({ key, value }))
-    await supabase.from('site_config').upsert(rows, { onConflict: 'key' })
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  function field(key, label) {
-    return (
-      <div className="form-group" style={{ marginBottom: '16px' }}>
-        <label style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888', display: 'block', marginBottom: '6px' }}>{label}</label>
-        <input
-          value={config[key] || ''}
-          onChange={e => setConfig(c => ({ ...c, [key]: e.target.value }))}
-          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
-        />
-      </div>
-    )
-  }
-
   return (
-    <div style={{ maxWidth: 560, padding: '32px 0' }}>
-      <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
-        Edit the Solivé chemistry panel shown on the Olive Oil page.
-      </p>
-
-      <div style={{ background: '#f8f7f5', borderRadius: '8px', padding: '24px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', color: '#555' }}>Chemistry Panel</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          {field('solive_acidity', 'Acidity (e.g. < 0.2%)')}
-          {field('solive_polyphenols', 'Polyphenols mg/kg (e.g. 487)')}
-          {field('solive_harvest_year', 'Harvest Year (e.g. 2025)')}
-          {field('solive_cultivar', 'Cultivar (e.g. Moraiolo)')}
+    <div className="cfg-page">
+      <p className="cfg-intro">Edit the Solivé chemistry panel. The harvest year also updates the product heading and the sticky order bar on the Olive Oil page.</p>
+      <div className="cfg-card">
+        <h3 className="cfg-card__title">Chemistry Panel</h3>
+        <div className="cfg-grid">
+          <ConfigField label="Acidity" max={12} value={config.solive_acidity} onChange={set('solive_acidity')} hint="e.g. < 0.2%" />
+          <ConfigField label="Polyphenols mg/kg" max={8} value={config.solive_polyphenols} onChange={set('solive_polyphenols')} hint="e.g. 487" />
+          <ConfigField label="Harvest Year" max={4} value={config.solive_harvest_year} onChange={set('solive_harvest_year')} hint="e.g. 2025" />
+          <ConfigField label="Cultivar" max={20} value={config.solive_cultivar} onChange={set('solive_cultivar')} hint="e.g. Moraiolo" />
         </div>
       </div>
-
-      <button className="btn-action" onClick={save} disabled={saving} style={{ minWidth: '140px' }}>
-        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
-      </button>
+      {saver.err && <p className="form-err">{saver.err}</p>}
+      <SaveButton saving={saver.saving} saved={saver.saved} onClick={() => saver.save(SOLIVE_KEYS, validate)} />
     </div>
   )
 }
@@ -1094,6 +1231,8 @@ function SoliveDetails() {
 function AdminPanel({ session, theme, setTheme }) {
   const [activeTab, setActiveTab] = useState('stay-requests')
   const adminName = session.user.user_metadata?.name || session.user.email
+  const adminId = session.user.id
+  const [navOpen, setNavOpen] = useState(false)
 
   async function logout() {
     await supabase.auth.signOut()
@@ -1110,13 +1249,13 @@ function AdminPanel({ session, theme, setTheme }) {
     'granciare-details':  <GranciareDetails />,
     'solive-details':     <SoliveDetails />,
     'leads':              <Leads />,
-    'users':              <Users adminName={adminName} />,
+    'users':              <Users adminId={adminId} />,
   }
 
   return (
     <div className={`admin-shell ${theme === 'dark' ? 'dark' : ''}`}>
       {/* Sidebar */}
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${navOpen ? 'admin-sidebar--open' : ''}`}>
         <div className="sidebar-brand">
           <span className="sidebar-logo">G</span>
           <span className="sidebar-name">Granciare</span>
@@ -1126,7 +1265,7 @@ function AdminPanel({ session, theme, setTheme }) {
             <button
               key={t.id}
               className={`sidebar-item ${activeTab === t.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => { setActiveTab(t.id); setNavOpen(false) }}
             >
               <span className="sidebar-icon">{t.icon}</span>
               <span>{t.label}</span>
@@ -1142,9 +1281,10 @@ function AdminPanel({ session, theme, setTheme }) {
       {/* Main */}
       <main className="admin-main">
         <header className="admin-topbar">
+          <button className="admin-menu-btn" onClick={() => setNavOpen(o => !o)} aria-label="Menu">☰</button>
           <h1 className="topbar-title">{TABS.find(t => t.id === activeTab)?.label}</h1>
           <div className="topbar-right">
-            <NotificationBell theme={theme} />
+            <NotificationBell theme={theme} userId={adminId} />
             <button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Toggle theme">
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>

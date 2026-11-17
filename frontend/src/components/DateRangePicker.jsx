@@ -2,9 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import './DateRangePicker.css';
 
-const MONTHS = ['January','February','March','April','May','June',
-                 'July','August','September','October','November','December'];
-const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ' };
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+// Month and weekday names in the visitor's language
+function monthName(year, month, locale) {
+  return cap(new Date(year, month, 1).toLocaleDateString(locale, { month: 'long' }));
+}
+function weekdayNames(locale) {
+  // 2023-01-01 was a Sunday
+  return Array.from({ length: 7 }, (_, i) => cap(new Date(2023, 0, 1 + i).toLocaleDateString(locale, { weekday: 'short' }).replace('.', '').slice(0, 2)));
+}
 
 function toYMD(date) {
   const y = date.getFullYear();
@@ -54,12 +61,13 @@ function buildCalendarDays(year, month) {
   return cells;
 }
 
-function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRanges, onDayClick, onDayHover, today }) {
+function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRanges, onDayClick, onDayHover, today, locale, checkoutOnlyLabel }) {
   const cells = buildCalendarDays(year, month);
+  const DAYS = weekdayNames(locale);
 
   return (
     <div className="drp-month">
-      <div className="drp-month__name">{MONTHS[month]} {year}</div>
+      <div className="drp-month__name">{monthName(year, month, locale)} {year}</div>
       <div className="drp-month__grid">
         {DAYS.map(d => <div key={d} className="drp-cell drp-cell--header">{d}</div>)}
         {cells.map((date, i) => {
@@ -102,7 +110,7 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
               className={classes}
               onClick={() => !disabled && onDayClick(date)}
               onMouseEnter={() => !disabled && onDayHover(date)}
-              title={isTurnover ? 'Check-out only' : undefined}
+              title={isTurnover ? checkoutOnlyLabel : undefined}
             >
               {date.getDate()}
             </div>
@@ -114,7 +122,8 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
 }
 
 export default function DateRangePicker({ checkIn, checkOut, onChange }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
+  const locale = LOCALES[lang] || 'en-GB';
   const today = startOfDay(new Date());
   const [open, setOpen] = useState(false);
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
@@ -183,7 +192,7 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
   const formatDisplay = (ymd) => {
     if (!ymd) return '';
     const d = parseYMD(ymd);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   return (
@@ -217,8 +226,8 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div className="drp-nav__months">
-              <span>{MONTHS[viewMonth]} {viewYear}</span>
-              <span>{MONTHS[month2]} {year2}</span>
+              <span>{monthName(viewYear, viewMonth, locale)} {viewYear}</span>
+              <span className="drp-nav__month2">{monthName(year2, month2, locale)} {year2}</span>
             </div>
             <button type="button" className="drp-nav__btn" onClick={nextMonth} aria-label="Next month">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -237,6 +246,8 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
                 onDayClick={handleDayClick}
                 onDayHover={setHoveredDate}
                 today={today}
+                locale={locale}
+                checkoutOnlyLabel={t('bk.checkoutOnly')}
               />
               <CalendarMonth
                 year={year2} month={month2}
@@ -246,6 +257,8 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
                 onDayClick={handleDayClick}
                 onDayHover={setHoveredDate}
                 today={today}
+                locale={locale}
+                checkoutOnlyLabel={t('bk.checkoutOnly')}
               />
             </div>
           )}

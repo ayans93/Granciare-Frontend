@@ -1,30 +1,52 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import DateRangePicker from './DateRangePicker';
 import PricingEstimator from './PricingEstimator';
 import PhoneInput from './PhoneInput';
 import { useTranslation } from '../i18n/LanguageContext';
+import { supabase } from '../lib/supabase';
+import { isValidPhone } from '../lib/validation';
+
+const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ' };
+const DEFAULT_TAGS = [
+  'Private Chef', 'Horse Riding', 'Cycling', 'Regular Cleaning',
+  'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions',
+];
+const DEFAULT_SELECTED = ['Olive Oil Tour'];
+
+function parseList(v) {
+  try { const a = JSON.parse(v); return Array.isArray(a) ? a.map(x => String(x).trim()).filter(Boolean) : null; } catch { return null; }
+}
 import './BookingWidget.css';
 
 export default function BookingWidget({ variant = 'light' }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
   const [form, setForm] = useState({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
   const [guestRaw, setGuestRaw] = useState({ adults: '2', children: '0' });
-  const [tags, setTags] = useState(['Olive Oil Tour']);
+  const [suggestedTags, setSuggestedTags] = useState(DEFAULT_TAGS);
+  const [defaultTags, setDefaultTags] = useState(DEFAULT_SELECTED);
+  const [tags, setTags] = useState(DEFAULT_SELECTED);
+  // Tag list and pre-selected tags are managed in Admin > Granciare Details
+  useEffect(() => {
+    supabase.from('site_config').select('key,value').in('key', ['booking_tags', 'booking_default_tags']).then(({ data }) => {
+      const cfg = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+      const list = parseList(cfg.booking_tags);
+      const defs = parseList(cfg.booking_default_tags);
+      if (list && list.length) setSuggestedTags(list);
+      if (defs) { setDefaultTags(defs); setTags(defs); }
+    });
+  }, []);
   const [tagInput, setTagInput] = useState('');
 
   const MAX_GUESTS = 16;
   const guestTotal = form.adults + form.children;
   const guestOverLimit = guestTotal > MAX_GUESTS;
 
-  const SUGGESTED_TAGS = [
-    'Private Chef', 'Horse Riding', 'Cycling', 'Regular Cleaning',
-    'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions',
-  ];
+
 
   const addTag = (tag) => {
-    const trimmed = tag.trim();
-    if (trimmed && !tags.includes(trimmed)) setTags(prev => [...prev, trimmed]);
+    const trimmed = tag.trim().slice(0, 60);
+    if (trimmed && !tags.some(x => x.toLowerCase() === trimmed.toLowerCase())) setTags(prev => [...prev, trimmed]);
   };
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const handleTagInput = (e) => {
@@ -100,6 +122,14 @@ export default function BookingWidget({ variant = 'light' }) {
     setError('');
     setTcError(false);
 
+    if (!form.name.trim()) {
+      setError(t('bk.errName'));
+      return;
+    }
+    if (!isValidPhone(form.phone)) {
+      setError(t('bk.errPhone'));
+      return;
+    }
     if (!tcAccepted) {
       setTcError(true);
       return;
@@ -158,8 +188,7 @@ export default function BookingWidget({ variant = 'light' }) {
             : t('booking.networkError'))
         );
       } else {
-        const ref = 'GRC-' + Date.now().toString(36).toUpperCase().slice(-6);
-        setRefNumber(ref);
+        setRefNumber(data.ref || '');
         setSubmitted(true);
       }
     } catch (err) {
@@ -175,7 +204,8 @@ export default function BookingWidget({ variant = 'light' }) {
 
   const formatDate = (iso) => {
     if (!iso) return '—';
-    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(LOCALES[lang] || 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   if (submitted) {
@@ -188,10 +218,12 @@ export default function BookingWidget({ variant = 'light' }) {
             <div className="booking-confirm__icon">✓</div>
             <h3 className="booking-confirm__title">{t('booking.successTitle')}</h3>
             <p className="booking-confirm__sub">{t('booking.successMsg', { name: form.name })}</p>
+            {refNumber && (
             <div className="booking-confirm__ref">
-              <span>{t('booking.refLabel')}</span>
-              <strong>{refNumber}</strong>
-            </div>
+                <span>{t('booking.refLabel')}</span>
+                <strong>{refNumber}</strong>
+              </div>
+            )}
           </div>
 
           <div className="booking-confirm__details">
@@ -217,7 +249,7 @@ export default function BookingWidget({ variant = 'light' }) {
             </div>
             <div className="booking-confirm__row">
               <span className="booking-confirm__label">{t('common.guests')}</span>
-              <span className="booking-confirm__value">{form.adults} adults{form.children > 0 ? `, ${form.children} children` : ''}</span>
+              <span className="booking-confirm__value">{form.adults === 1 ? t('bk.adult1') : t('bk.adultN', { n: form.adults })}{form.children > 0 ? `, ${form.children === 1 ? t('bk.child1') : t('bk.childN', { n: form.children })}` : ''}</span>
             </div>
             {tags.length > 0 && (
               <div className="booking-confirm__row booking-confirm__row--extras">
@@ -243,7 +275,7 @@ export default function BookingWidget({ variant = 'light' }) {
                 setSubmitted(false);
                 setError('');
                 setTcAccepted(false);
-                setTags([]);
+                setTags(defaultTags);
                 setTagInput('');
                 setDates({ checkIn: '', checkOut: '' });
                 setForm({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
@@ -283,11 +315,11 @@ export default function BookingWidget({ variant = 'light' }) {
         {/* Guests — Adults + Children counters */}
         <div className="form-group">
           <label>{t('common.guests')}</label>
-          <p className="form-hint" style={{marginTop:0, marginBottom:'12px'}}>Property is best suited for larger groups of 8–16 guests</p>
+          <p className="form-hint" style={{marginTop:0, marginBottom:'12px'}}>{t('bk.bestSuited')}</p>
           <div className={`guest-counters${guestOverLimit ? ' guest-counters--error' : ''}`}>
             <div className="guest-counter">
               <div className="guest-counter__label">
-                <span>Adults</span>
+                <span>{t('bk.adults')}</span>
               </div>
               <div className="guest-counter__control">
                 <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('adults', -1)} aria-label="Fewer adults">−</button>
@@ -304,8 +336,8 @@ export default function BookingWidget({ variant = 'light' }) {
             </div>
             <div className="guest-counter">
               <div className="guest-counter__label">
-                <span>Children</span>
-                <span className="guest-counter__sub">Under 10</span>
+                <span>{t('bk.children')}</span>
+                <span className="guest-counter__sub">{t('bk.under10')}</span>
               </div>
               <div className="guest-counter__control">
                 <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', -1)} aria-label="Fewer children">−</button>
@@ -323,7 +355,7 @@ export default function BookingWidget({ variant = 'light' }) {
           </div>
           {guestOverLimit && (
             <p className="form-hint form-hint--error" style={{marginTop:'8px'}}>
-              Maximum {MAX_GUESTS} guests total — please reduce adults or children.
+              {t('bk.maxGuests', { max: MAX_GUESTS })}
             </p>
           )}
         </div>
@@ -346,8 +378,10 @@ export default function BookingWidget({ variant = 'light' }) {
         </div>
 
         <div className="form-group">
-          <label>{t('common.phone')}</label>
+          <label>{t('common.phone')} *</label>
           <PhoneInput
+            placeholder={t('bk.mobilePh')}
+            searchPlaceholder={t('bk.countrySearch')}
             value={form.phone}
             onChange={val => setForm(prev => ({ ...prev, phone: val }))}
           />
@@ -377,20 +411,20 @@ export default function BookingWidget({ variant = 'light' }) {
               value={tagInput}
               onChange={e => setTagInput(e.target.value)}
               onKeyDown={handleTagInput}
-              placeholder="Type a request and press Enter…"
+              placeholder={t('bk.tagPh')}
             />
             {tagInput.trim() && (
               <button
                 type="button"
                 className="tag-input__add"
                 onClick={() => { addTag(tagInput); setTagInput(''); }}
-              >Add</button>
+              >{t('bk.add')}</button>
             )}
           </div>
 
           {/* Suggestions */}
           <div className="tag-suggestions">
-            {SUGGESTED_TAGS.filter(s => !tags.includes(s)).map(s => (
+            {suggestedTags.filter(s => !tags.some(x => x.toLowerCase() === s.toLowerCase())).map(s => (
               <button
                 key={s}
                 type="button"
@@ -404,7 +438,7 @@ export default function BookingWidget({ variant = 'light' }) {
             name="notes"
             value={form.notes}
             onChange={handle}
-            placeholder="Any other notes, dietary needs, occasion…"
+            placeholder={t('bk.notesPh')}
             className="mt-12"
           />
         </div>
@@ -418,9 +452,9 @@ export default function BookingWidget({ variant = 'light' }) {
           />
           <span>
             {t('booking.tcAgree')}{' '}
-            <a href="#terms" target="_blank" rel="noreferrer">{t('booking.tcLink')}</a>
+            <a href="/terms" target="_blank" rel="noreferrer">{t('booking.tcLink')}</a>
             {' '}{t('booking.tcAnd')}{' '}
-            <a href="#privacy" target="_blank" rel="noreferrer">{t('booking.privacyLink')}</a>
+            <a href="/privacy" target="_blank" rel="noreferrer">{t('booking.privacyLink')}</a>
           </span>
         </label>
         {tcError && (
