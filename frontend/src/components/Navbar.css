@@ -8,8 +8,9 @@
 
 .navbar--scrolled {
   padding: 20px 0;
-  background: rgba(253, 250, 246, 0.97);
-  backdrop-filter: blur(12px);
+  /* Solid colour, no backdrop-filter: a filter here would trap the full-screen
+     mobile menu inside the bar's height */
+  background: #fdfaf6;
   border-bottom: 1px solid var(--cream-dark);
   box-shadow: 0 2px 20px rgba(30,28,26,0.06);
 }
