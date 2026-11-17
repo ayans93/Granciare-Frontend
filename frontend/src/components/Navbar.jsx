@@ -43,6 +43,7 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
+  // The bar is always solid off-white; it only gets more compact once the page scrolls
   const navLinks = [
     { to: '/',           label: t('nav.granciare')  },
     { to: '/olive-oil',  label: t('nav.oliveOil')   },
@@ -51,7 +52,7 @@ export default function Navbar() {
   ];
 
   return (
-    <header className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}>
+    <header className={`navbar navbar--scrolled ${scrolled ? 'navbar--compact' : ''}`}>
       <div className="navbar__inner">
         {/* Logo */}
         <Link to="/" className="navbar__logo" onClick={handleLogoClick}>

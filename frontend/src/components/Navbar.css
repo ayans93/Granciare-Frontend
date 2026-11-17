@@ -7,12 +7,13 @@
 }
 
 .navbar--scrolled {
-  padding: 14px 0;
-  background: rgba(253, 250, 246, 0.96);
+  padding: 20px 0;
+  background: rgba(253, 250, 246, 0.97);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--cream-dark);
   box-shadow: 0 2px 20px rgba(30,28,26,0.06);
 }
+.navbar--compact { padding: 14px 0; }
 
 .navbar__inner {
   max-width: var(--max-w);
