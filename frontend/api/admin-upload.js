@@ -1,15 +1,20 @@
 // POST  /api/admin-upload  — upload photo to Supabase Storage, AI-categorise
 // DELETE /api/admin-upload  — delete photo from Storage
 
-import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-)
+import { getServerClient, requireAdmin } from './_lib/supabase.js'
 
 const BUCKET = 'photos'
+const MAX_BYTES = 10 * 1024 * 1024
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+// Creates the public storage bucket on first use, so uploads don't fail with "Bucket not found".
+async function ensureBucket(supabase) {
+  const { data } = await supabase.storage.getBucket(BUCKET)
+  if (data) return null
+  const { error } = await supabase.storage.createBucket(BUCKET, { public: true })
+  return error && !/already exists/i.test(error.message) ? error : null
+}
 
 const CATEGORIES = [
   'mansion', 'landscape', 'pool', 'dining', 'kitchen',
@@ -55,6 +60,15 @@ async function categorise(base64, mediaType) {
 export const config = { api: { bodyParser: false } }
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST' && req.method !== 'DELETE') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Admins only
+  const admin = await requireAdmin(req, res)
+  if (!admin) return
+  const supabase = getServerClient()
+
   // DELETE
   if (req.method === 'DELETE') {
     const chunks = []
@@ -101,6 +115,18 @@ export default async function handler(req, res) {
     }
 
     if (!fileBuffer || !filePath) return res.status(400).json({ error: 'Missing file' })
+    if (!IMAGE_TYPES.includes(fileMediaType)) {
+      return res.status(400).json({ error: 'Only JPG, PNG, WebP or GIF images can be uploaded.' })
+    }
+    if (fileBuffer.length > MAX_BYTES) {
+      return res.status(400).json({ error: 'Image is larger than 10 MB.' })
+    }
+    if (!/^photos\/[\w.-]+$/.test(filePath)) {
+      return res.status(400).json({ error: 'Invalid file path.' })
+    }
+
+    const bucketErr = await ensureBucket(supabase)
+    if (bucketErr) return res.status(500).json({ error: `Storage is not ready: ${bucketErr.message}` })
 
     // AI categorisation
     const base64 = fileBuffer.toString('base64')

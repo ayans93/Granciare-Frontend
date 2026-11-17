@@ -1,15 +1,15 @@
 // POST /api/admin-create-user — create a new Supabase Auth user + admin_users row
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-)
+import { getServerClient, requireAdmin } from './_lib/supabase.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { name, email, password } = req.body
+  // Only a signed-in admin may create another admin
+  const admin = await requireAdmin(req, res)
+  if (!admin) return
+  const supabase = getServerClient()
+
+  const { name, email, password } = req.body || {}
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email, password required' })
 
   // Create auth user

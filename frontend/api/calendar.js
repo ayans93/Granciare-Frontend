@@ -12,7 +12,7 @@
  *   https://granciare.com/api/calendar.ics?token=YOUR_SECRET
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { getServerClient } from './_lib/supabase.js';
 
 // ── Helpers ───────────────────────────────────────────────
 function escapeIcal(str) {
@@ -101,14 +101,11 @@ export default async function handler(req, res) {
   }
 
   // Fetch confirmed bookings from Supabase
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
+  const sb = getServerClient();
+  if (!sb) {
     return res.status(500).json({ error: 'Supabase not configured.' });
   }
 
-  const sb = createClient(supabaseUrl, supabaseKey);
   const { data, error } = await sb
     .from('stay_requests')
     .select('id, name, check_in, check_out, adults, children, special_requests')

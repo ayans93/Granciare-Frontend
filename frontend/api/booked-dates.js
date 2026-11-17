@@ -1,15 +1,18 @@
 /**
  * GET /api/booked-dates
  *
- * Returns all booked date ranges from Google Sheet so the
- * frontend calendar can grey out unavailable dates.
+ * Returns the date ranges the public calendar must grey out:
+ *   - stays marked "confirmed" in the admin panel (Supabase stay_requests)
+ *   - periods blocked by the estate (STATIC_BLOCKED)
+ *
+ * Enquiries that have not been confirmed do NOT block dates.
  *
  * Response: { bookedRanges: [{ checkIn: "YYYY-MM-DD", checkOut: "YYYY-MM-DD" }, ...] }
  */
 
-import { google } from 'googleapis';
+import { getServerClient } from './_lib/supabase.js';
 
-// Dates blocked by the estate (not from Google Sheet)
+// Dates blocked by the estate itself
 const STATIC_BLOCKED = [
   { checkIn: '2026-10-01', checkOut: '2026-12-01' }, // Oct & Nov unavailable
 ];
@@ -25,30 +28,24 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  try {
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      },
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
+  const sb = getServerClient();
+  if (!sb) return res.status(500).json({ error: 'Could not fetch availability.' });
 
-    const sheets = google.sheets({ version: 'v4', auth });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Bookings!E2:F', // columns E (Check-in) and F (Check-out), skip header
-    });
+  const { data, error } = await sb
+    .from('stay_requests')
+    .select('check_in, check_out')
+    .eq('status', 'confirmed');
 
-    const rows = response.data.values || [];
-
-    const bookedRanges = rows
-      .filter(row => row[0] && row[1]) // must have both check-in and check-out
-      .map(row => ({ checkIn: row[0], checkOut: row[1] }));
-
-    return res.status(200).json({ bookedRanges: [...STATIC_BLOCKED, ...bookedRanges] });
-  } catch (err) {
-    console.error('Booked dates error:', err);
+  if (error) {
+    console.error('Booked dates error:', error.message);
     return res.status(500).json({ error: 'Could not fetch availability.' });
   }
+
+  const bookedRanges = (data || [])
+    .filter(r => r.check_in && r.check_out)
+    .map(r => ({ checkIn: r.check_in, checkOut: r.check_out }));
+
+  // Always fresh: a confirmation in admin should show on the next page load
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(200).json({ bookedRanges: [...STATIC_BLOCKED, ...bookedRanges] });
 }

@@ -29,7 +29,7 @@
 
 import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
-import { createClient } from '@supabase/supabase-js';
+import { getServerClient, hasServiceKey } from './_lib/supabase.js';
 
 // ── CORS helper ───────────────────────────────────────────────
 function setCors(req, res) {
@@ -279,45 +279,48 @@ export default async function handler(req, res) {
     source:          source  || 'granciare.com',
   };
 
-  // ── Write to Supabase stay_requests ──────────────────────
+  // ── Write to Supabase stay_requests (what the admin panel reads) ──
   async function saveToSupabase() {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('Supabase env vars not set — skipping stay_requests insert');
-      return;
+    const sb = getServerClient();
+    if (!sb) {
+      console.error('stay_requests insert skipped: Supabase env vars not set');
+      return false;
     }
-    const sb = createClient(supabaseUrl, supabaseKey);
-    const a = parseInt(data.adults, 10) || 0;
-    const c = parseInt(data.children, 10) || 0;
-    const { error: sbErr } = await sb.from('stay_requests').insert({
+    const base = {
       name:             data.name,
       email:            data.email,
       phone:            data.phone || null,
       check_in:         data.checkIn  || null,
       check_out:        data.checkOut || null,
-      adults:           a,
-      children:         c,
+      adults:           parseInt(data.adults, 10) || 0,
+      children:         parseInt(data.children, 10) || 0,
       special_requests: data.specialRequests || null,
-      notes:            data.message || null,
       status:           'enquiry',
-    });
-    if (sbErr) console.error('Supabase stay_requests insert error:', sbErr.message);
-    else {
-      await sb.from('notifications').insert({
-        type: 'stay_request', title: 'New stay enquiry',
-        body: `${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
-      }).catch(() => {});
+    };
+    // The guest's free-text note lives in `message` (older schema: `notes`).
+    let { error: sbErr } = await sb.from('stay_requests').insert({ ...base, message: data.message || null });
+    if (sbErr && /message/i.test(sbErr.message || '')) {
+      ({ error: sbErr } = await sb.from('stay_requests').insert({ ...base, notes: data.message || null }));
     }
+    if (sbErr) {
+      console.error('stay_requests insert error:', sbErr.message, hasServiceKey ? '' : '(no service key set — insert ran with the anon key)');
+      return false;
+    }
+    const { error: nErr } = await sb.from('notifications').insert({
+      type: 'stay_request', title: 'New stay enquiry',
+      body: `${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
+    });
+    if (nErr) console.error('notifications insert error:', nErr.message);
+    return true;
   }
 
   try {
-    await Promise.all([
+    const [, , stored] = await Promise.all([
       appendToSheet(data),
       sendNotificationEmail(data),
       saveToSupabase(),
     ]);
-    return res.status(200).json({ success: true, message: 'Enquiry received. We will be in touch shortly.' });
+    return res.status(200).json({ success: true, stored, message: 'Enquiry received. We will be in touch shortly.' });
   } catch (err) {
     console.error('Enquiry handler error:', err);
     return res.status(500).json({ error: `Internal error: ${err.message}` });

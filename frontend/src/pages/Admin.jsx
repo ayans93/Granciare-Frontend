@@ -55,6 +55,13 @@ function nights(ci, co) {
   return Math.round((new Date(co) - new Date(ci)) / 86400000)
 }
 
+// Admin API calls carry the signed-in admin's token; the server rejects anything else.
+async function authHeader() {
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 // ── NOTIFICATION BELL ──────────────────────────────────────
 function NotificationBell({ theme }) {
   const [open, setOpen] = useState(false)
@@ -419,6 +426,7 @@ function Photos() {
   const [tab, setTab] = useState('stay')
   const [photos, setPhotos] = useState([])
   const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
   const [catFilter, setCatFilter] = useState('all')
   const fileRef = useRef()
 
@@ -437,18 +445,28 @@ function Photos() {
 
   async function upload(files) {
     setUploading(true)
+    setUploadErr('')
+    const failed = []
     for (const file of Array.from(files)) {
-      const ext  = file.name.split('.').pop()
-      const path = `photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('path', path)
-      formData.append('tab', tab)
-      const res  = await fetch('/api/admin-upload', { method: 'POST', body: formData })
-      const { publicUrl, category } = await res.json()
-      await supabase.from('photos').insert({ storage_path: path, public_url: publicUrl, category, alt_text: file.name })
-      await supabase.from('notifications').insert({ type: 'photo_added', title: 'New photo added', body: `Category: ${category}` })
+      try {
+        const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const path = `photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('path', path)
+        formData.append('tab', tab)
+        const res  = await fetch('/api/admin-upload', { method: 'POST', headers: await authHeader(), body: formData })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || !json.publicUrl) throw new Error(json.error || `Upload failed (${res.status})`)
+        const { error } = await supabase.from('photos').insert({ storage_path: path, public_url: json.publicUrl, category: json.category, alt_text: file.name })
+        if (error) throw new Error(error.message)
+        await supabase.from('notifications').insert({ type: 'photo_added', title: 'New photo added', body: `Category: ${json.category}` })
+      } catch (e) {
+        failed.push(`${file.name}: ${e.message}`)
+      }
     }
+    if (failed.length) setUploadErr(`Could not upload ${failed.join(' · ')}`)
+    if (fileRef.current) fileRef.current.value = ''
     setUploading(false)
     fetchPhotos()
   }
@@ -463,7 +481,7 @@ function Photos() {
     if (!confirm('Delete this photo?')) return
     await fetch('/api/admin-upload', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
       body: JSON.stringify({ path: photo.storage_path }),
     })
     await supabase.from('photos').delete().eq('id', photo.id)
@@ -495,6 +513,8 @@ function Photos() {
         </button>
         <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => upload(e.target.files)} />
       </div>
+
+      {uploadErr && <p className="form-err" role="alert">{uploadErr}</p>}
 
       {photos.length === 0 ? <p className="empty-state">No photos in this category.</p> : (
         <div className="photos-grid">
@@ -792,7 +812,7 @@ function Users({ adminName }) {
     setSaving(true); setErr('')
     const res = await fetch('/api/admin-create-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
       body: JSON.stringify(form),
     })
     const json = await res.json()
