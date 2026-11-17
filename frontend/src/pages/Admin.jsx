@@ -13,6 +13,7 @@ const TABS = [
   { id: 'pricing',             label: 'Pricing',             icon: '💶' },
   { id: 'granciare-details',   label: 'Granciare Details',   icon: '🏛️' },
   { id: 'solive-details',      label: 'Solivé Details',      icon: '🫒' },
+  { id: 'leads',               label: 'Leads',               icon: '✉️' },
   { id: 'users',               label: 'Users',               icon: '👤' },
 ]
 
@@ -73,7 +74,11 @@ function NotificationBell({ theme }) {
     const ch = supabase.channel('notifs')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => fetchNotifs())
       .subscribe()
-    return () => supabase.removeChannel(ch)
+    // Realtime may not be enabled on the table, so also poll and refresh when the tab regains focus
+    const poll = setInterval(fetchNotifs, 30000)
+    const onFocus = () => fetchNotifs()
+    window.addEventListener('focus', onFocus)
+    return () => { supabase.removeChannel(ch); clearInterval(poll); window.removeEventListener('focus', onFocus) }
   }, [])
 
   useEffect(() => {
@@ -473,6 +478,10 @@ function Photos() {
 
   async function toggleFeatured(photo) {
     if (!FEATURED_SECTIONS[photo.category]) return
+    // Only one lead photo per section: featuring this one un-features the others
+    if (!photo.is_featured) {
+      await supabase.from('photos').update({ is_featured: false }).eq('category', photo.category).neq('id', photo.id)
+    }
     await supabase.from('photos').update({ is_featured: !photo.is_featured }).eq('id', photo.id)
     fetchPhotos()
   }
@@ -793,6 +802,43 @@ function Pricing() {
   )
 }
 
+// ── LEADS TAB (Poderetto interest + harvest sign-ups) ─────
+const LEAD_KINDS = { poderetto: 'Poderetto interest', harvest: '2026 harvest sign-up' }
+function Leads() {
+  const [rows, setRows] = useState([])
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    supabase.from('leads').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
+      if (error) setErr(error.message)
+      else setRows(data || [])
+    })
+  }, [])
+  return (
+    <div className="tab-content">
+      <div className="tab-header"><h2>Leads</h2></div>
+      {err ? (
+        <p className="empty-state">Leads table not available yet ({err}). New leads are still emailed to the estate inbox.</p>
+      ) : rows.length === 0 ? <p className="empty-state">No leads yet.</p> : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Form</th><th>Name</th><th>Email</th><th>Received</th></tr></thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id}>
+                  <td>{LEAD_KINDS[r.kind] || r.kind}</td>
+                  <td>{r.name || '—'}</td>
+                  <td><a href={`mailto:${r.email}`}>{r.email}</a></td>
+                  <td>{fmt(r.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── USER MANAGEMENT TAB ───────────────────────────────────
 function Users({ adminName }) {
   const [users, setUsers] = useState([])
@@ -1063,6 +1109,7 @@ function AdminPanel({ session, theme, setTheme }) {
     'pricing':            <Pricing />,
     'granciare-details':  <GranciareDetails />,
     'solive-details':     <SoliveDetails />,
+    'leads':              <Leads />,
     'users':              <Users adminName={adminName} />,
   }
 

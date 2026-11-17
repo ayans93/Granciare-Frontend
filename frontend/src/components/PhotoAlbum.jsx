@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSitePhotos, applyAdminPhotos } from '../lib/sitePhotos';
 import './PhotoAlbum.css';
 
 /* ── All images organised by category ──────────────────────── */
@@ -259,12 +260,29 @@ function Lightbox({ images, index, onClose, onChange }) {
 }
 
 /* ── Main PhotoAlbum modal ─────────────────────────────────── */
+// Admin photo categories feeding each album tab, and the tab's featured category
+const ADMIN_MAP = {
+  mansion: ['mansion'], landscape: ['landscape'], pool: ['pool'], dining: ['dining'], kitchen: ['kitchen'],
+  bedrooms: ['bedrooms'], living: ['living_areas'], bathrooms: ['bathrooms'], lounge: ['lounge_bar'],
+  farm: ['olive_oil', 'awards'],
+};
+const ADMIN_FEATURED = { landscape: 'landscape', pool: 'pool', bedrooms: 'bedrooms', farm: 'olive_oil' };
+
 export default function PhotoAlbum({ onClose, initialCategory = 'all' }) {
   const [activeCat, setActiveCat] = useState(initialCategory);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const tabsRef = useRef(null);
+  const adminPhotos = useSitePhotos();
 
-  const category = CATEGORIES.find(c => c.key === activeCat) || CATEGORIES[0];
+  const categories = useMemo(() => {
+    const cats = CATEGORIES.slice(1).map(c => ({
+      ...c,
+      images: applyAdminPhotos(c.images.map(src => ({ src })), adminPhotos, ADMIN_MAP[c.key] || [], ADMIN_FEATURED[c.key]).map(x => x.src),
+    }));
+    return [{ ...CATEGORIES[0], images: cats.flatMap(c => c.images) }, ...cats];
+  }, [adminPhotos]);
+
+  const category = categories.find(c => c.key === activeCat) || categories[0];
 
   // Lock body scroll
   useEffect(() => {
@@ -306,7 +324,7 @@ export default function PhotoAlbum({ onClose, initialCategory = 'all' }) {
 
       {/* Category tabs */}
       <div className="pa-tabs" ref={tabsRef}>
-        {CATEGORIES.map(cat => (
+        {categories.map(cat => (
           <button
             key={cat.key}
             className={`pa-tab ${activeCat === cat.key ? 'pa-tab--active' : ''}`}

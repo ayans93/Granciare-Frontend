@@ -67,7 +67,12 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
 
           const ymd        = toYMD(date);
           const isPast     = startOfDay(date) < startOfDay(today);
-          const isBooked   = isDateBooked(date, bookedRanges);
+          // A booking's arrival day can still be someone else's departure day
+          const isTurnover = !isPast && checkIn && !checkOut
+            && startOfDay(date) > parseYMD(checkIn)
+            && bookedRanges.some(r => r.checkIn === ymd)
+            && !rangeOverlapsBooked(parseYMD(checkIn), date, bookedRanges);
+          const isBooked   = isDateBooked(date, bookedRanges) && !isTurnover;
           const disabled   = isPast || isBooked;
 
           const isStart    = checkIn  && ymd === checkIn;
@@ -88,6 +93,7 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
             isEnd     ? 'drp-cell--end'      : '',
             inRange   ? 'drp-cell--in-range' : '',
             isToday   ? 'drp-cell--today'    : '',
+            isTurnover ? 'drp-cell--checkout-only' : '',
           ].filter(Boolean).join(' ');
 
           return (
@@ -96,6 +102,7 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
               className={classes}
               onClick={() => !disabled && onDayClick(date)}
               onMouseEnter={() => !disabled && onDayHover(date)}
+              title={isTurnover ? 'Check-out only' : undefined}
             >
               {date.getDate()}
             </div>
@@ -206,14 +213,14 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
         <div className="drp-dropdown" onMouseLeave={() => setHoveredDate(null)}>
           {/* Nav header */}
           <div className="drp-nav">
-            <button className="drp-nav__btn" onClick={prevMonth} aria-label="Previous month">
+            <button type="button" className="drp-nav__btn" onClick={prevMonth} aria-label="Previous month">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div className="drp-nav__months">
               <span>{MONTHS[viewMonth]} {viewYear}</span>
               <span>{MONTHS[month2]} {year2}</span>
             </div>
-            <button className="drp-nav__btn" onClick={nextMonth} aria-label="Next month">
+            <button type="button" className="drp-nav__btn" onClick={nextMonth} aria-label="Next month">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>

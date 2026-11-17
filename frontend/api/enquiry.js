@@ -30,6 +30,7 @@
 import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 import { getServerClient, hasServiceKey } from './_lib/supabase.js';
+import { notify } from './_lib/notify.js';
 
 // ── CORS helper ───────────────────────────────────────────────
 function setCors(req, res) {
@@ -306,11 +307,10 @@ export default async function handler(req, res) {
       console.error('stay_requests insert error:', sbErr.message, hasServiceKey ? '' : '(no service key set — insert ran with the anon key)');
       return false;
     }
-    const { error: nErr } = await sb.from('notifications').insert({
+    await notify(sb, {
       type: 'stay_request', title: 'New stay enquiry',
       body: `${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
     });
-    if (nErr) console.error('notifications insert error:', nErr.message);
     return true;
   }
 

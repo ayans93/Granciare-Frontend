@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { submitLead } from '../lib/leads';
 import { useTranslation } from '../i18n/LanguageContext';
 import './Poderetto.css';
 
@@ -10,7 +11,21 @@ export default function Poderetto() {
   const [registered, setRegistered] = useState(false);
 
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
-  const submit = e => { e.preventDefault(); setRegistered(true); };
+  const [sending, setSending] = useState(false);
+  const [leadError, setLeadError] = useState('');
+  const submit = async e => {
+    e.preventDefault();
+    if (sending) return;
+    setSending(true); setLeadError('');
+    try {
+      await submitLead('poderetto', form);
+      setRegistered(true);
+    } catch (err) {
+      setLeadError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="poderetto">
@@ -122,8 +137,9 @@ export default function Poderetto() {
                     <label>{t('common.email')}</label>
                     <input type="email" name="email" value={form.email} onChange={handle} placeholder="your@email.com" required />
                   </div>
-                  <button type="submit" className="btn btn-primary">
-                    {t('poderetto.registerBtn')}
+                  {leadError && <p className="form-hint form-hint--error" role="alert">{leadError}</p>}
+                  <button type="submit" className="btn btn-primary" disabled={sending}>
+                    {sending ? t('common.sending') : t('poderetto.registerBtn')}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                     </svg>

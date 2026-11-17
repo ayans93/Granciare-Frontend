@@ -981,3 +981,5 @@
 .olive-page .qty-btn--active { background: var(--bottle-green); border-color: var(--bottle-green); color: #fff; }
 .olive-page .olive-enquiry .btn { background: var(--bottle-green); color: #fff; }
 .olive-page .olive-enquiry .btn:hover { background: var(--charcoal); }
+.qty-custom-error { margin: -6px 0 12px; font-size: 13px; color: #b03a2e; }
+.harvest-error { margin-top: 10px; font-size: 13px; color: #ffd6d0; }

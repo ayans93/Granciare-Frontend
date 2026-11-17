@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import DateRangePicker from './DateRangePicker';
 import PricingEstimator from './PricingEstimator';
 import PhoneInput from './PhoneInput';
@@ -66,6 +66,7 @@ export default function BookingWidget({ variant = 'light' }) {
   const [tcAccepted, setTcAccepted] = useState(false);
   const [tcError, setTcError] = useState(false);
   const [refNumber, setRefNumber] = useState('');
+  const submittingRef = useRef(false);
 
   const MIN_NIGHTS = 2;
   const MAX_NIGHTS = 30;
@@ -95,6 +96,7 @@ export default function BookingWidget({ variant = 'light' }) {
 
   const submit = async e => {
     e.preventDefault();
+    if (submittingRef.current) return;           // ignore double clicks
     setError('');
     setTcError(false);
 
@@ -118,6 +120,7 @@ export default function BookingWidget({ variant = 'light' }) {
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     setLoadingMsg(t('common.sending'));
 
@@ -164,6 +167,7 @@ export default function BookingWidget({ variant = 'light' }) {
       console.error('Booking submit error:', err);
       setError(t('booking.networkError'));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
       setLoadingMsg('');
     }
@@ -328,7 +332,6 @@ export default function BookingWidget({ variant = 'light' }) {
         <PricingEstimator
           checkIn={dates.checkIn}
           checkOut={dates.checkOut}
-          guests={form.adults + form.children}
         />
 
         <div className="booking-widget__row booking-widget__row--2">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { submitLead } from '../lib/leads';
 import './OliveOil.css';
 
 // Fallback prices if Supabase hasn't loaded yet
@@ -11,6 +12,10 @@ const DEFAULT_QTY_TIERS = [
   { qty: 48,  label: '48 bottles',  perBottle: 26,    total: 1248, save: 'Save 19%' },
   { qty: 100, label: '100 bottles', perBottle: 24,    total: 2400, save: 'Save 25%' },
 ];
+
+// Smallest order we accept (shipping case). Tiers below this are reference prices only.
+const MIN_BOTTLES = 5;
+const MAX_BOTTLES = 9999;
 
 function buildTiers(rows) {
   if (!rows || rows.length === 0) return DEFAULT_QTY_TIERS;
@@ -63,14 +68,12 @@ export default function OliveOil() {
   const takeaways = ta('oliveOil.takeaways');
 
   // Order form
-  const [form, setForm]           = useState({ name: '', phone: '', email: '', address: '', bottles: '5', message: '' });
-  const [customBottles, setCustomBottles] = useState('');
+  const [form, setForm]           = useState({ name: '', phone: '', email: '', address: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
+  const submittingRef = useRef(false);
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
-  const isCustomBottles = form.bottles === 'custom';
-  const resolvedBottles = isCustomBottles ? customBottles : form.bottles;
 
   // Dynamic pricing from Supabase
   const [qtyTiers, setQtyTiers] = useState(DEFAULT_QTY_TIERS);
@@ -80,16 +83,53 @@ export default function OliveOil() {
     });
   }, []);
 
+  // Quantity — one selection shared by the tiles above and the order form below
+  const orderTiers = qtyTiers.filter(t => t.qty >= MIN_BOTTLES);
+  const basePrice = qtyTiers.length ? qtyTiers[0].perBottle : 0;
+  const [selection, setSelection] = useState(MIN_BOTTLES);   // a tier quantity, or 'custom'
+  const [customQty, setCustomQty] = useState('');
+  const isCustom = selection === 'custom';
+  useEffect(() => {
+    if (!isCustom && orderTiers.length && !orderTiers.some(t => t.qty === selection)) setSelection(orderTiers[0].qty);
+  }, [qtyTiers]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const customNum = Number(customQty);
+  const customValid = customQty !== '' && Number.isInteger(customNum) && customNum >= MIN_BOTTLES && customNum <= MAX_BOTTLES;
+  const selectedQty = isCustom ? (customValid ? customNum : null) : selection;
+
+  // Price for any quantity: the per-bottle rate of the largest tier it reaches
+  const priceFor = q => {
+    if (!q) return null;
+    const reached = orderTiers.filter(t => t.qty <= q);
+    const tierRow = reached[reached.length - 1];
+    if (!tierRow) return null;
+    const save = tierRow.perBottle < basePrice ? `Save ${Math.round((1 - tierRow.perBottle / basePrice) * 100)}%` : null;
+    return { perBottle: tierRow.perBottle, total: Math.round(q * tierRow.perBottle * 100) / 100, save };
+  };
+  const price = priceFor(selectedQty);
+  const chooseQty = v => { setSelection(v === 'custom' ? 'custom' : Number(v)); setError(''); };
+
   // Product interactions
-  const [selectedQtyIdx, setSelectedQtyIdx] = useState(0);
   const [galleryIdx, setGalleryIdx]         = useState(0);
-  const CUSTOM_IDX = -1; // sentinel for the custom tile
-  const isCustomTile = selectedQtyIdx === CUSTOM_IDX;
-  const [customTileQty, setCustomTileQty] = useState('');
 
   // Harvest signup
   const [harvestEmail, setHarvestEmail]         = useState('');
   const [harvestDone, setHarvestDone]           = useState(false);
+  const [harvestSending, setHarvestSending]     = useState(false);
+  const [harvestError, setHarvestError]         = useState('');
+  const submitHarvest = async e => {
+    e.preventDefault();
+    if (harvestSending) return;
+    setHarvestSending(true); setHarvestError('');
+    try {
+      await submitLead('harvest', { email: harvestEmail });
+      setHarvestDone(true);
+    } catch (err) {
+      setHarvestError(err.message);
+    } finally {
+      setHarvestSending(false);
+    }
+  };
 
   // Site config: Solivé stats
   const [soliveStats, setSoliveStats] = useState({
@@ -121,34 +161,31 @@ export default function OliveOil() {
 
   const submit = async e => {
     e.preventDefault();
+    if (submittingRef.current) return;           // ignore double clicks
     setError('');
+    if (!selectedQty) {
+      setError(`Please enter a whole number of bottles between ${MIN_BOTTLES} and ${MAX_BOTTLES}.`);
+      return;
+    }
+    if (!form.name.trim()) { setError('Please enter your name.'); return; }
+    submittingRef.current = true;
     setLoading(true);
     try {
-      const { error: dbError } = await supabase.from('oil_requests').insert({
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        quantity: parseInt(resolvedBottles, 10) || 0,
-        message: `Delivery address: ${form.address}${form.message ? '\n\n' + form.message : ''}`,
-        status: 'enquiry',
+      const res = await fetch('/api/oil-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, quantity: selectedQty }),
       });
-      if (dbError) throw new Error(dbError.message);
-      await supabase.from('notifications').insert({
-        type: 'oil_request',
-        title: 'New oil order',
-        body: `${form.name} — ${resolvedBottles} bottles`,
-      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || t('booking.networkError'));
       setSubmitted(true);
     } catch (err) {
       setError(err.message || t('booking.networkError'));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
-
-  const tier = isCustomTile
-    ? { qty: parseInt(customTileQty, 10) || 0, perBottle: 32, total: (parseInt(customTileQty, 10) || 0) * 32, save: null }
-    : (qtyTiers[selectedQtyIdx] || qtyTiers[0]);
 
   return (
     <div className="olive-page">
@@ -271,48 +308,50 @@ export default function OliveOil() {
               <div className="qty-selector">
                 <span className="qty-selector__label">Select quantity</span>
                 <div className="qty-presets">
-                  {qtyTiers.map((t, i) => (
+                  {orderTiers.map(t => (
                     <button
+                      type="button"
                       key={t.qty}
-                      className={`qty-btn${i === selectedQtyIdx ? ' qty-btn--active' : ''}`}
-                      onClick={() => setSelectedQtyIdx(i)}
+                      className={`qty-btn${selection === t.qty ? ' qty-btn--active' : ''}`}
+                      onClick={() => chooseQty(t.qty)}
                     >
                       <span className="qty-btn__num">{t.qty}</span>
                       <span className="qty-btn__unit">btls</span>
                     </button>
                   ))}
                   <button
-                    className={`qty-btn${isCustomTile ? ' qty-btn--active' : ''}`}
-                    onClick={() => { setSelectedQtyIdx(CUSTOM_IDX); setForm(f => ({ ...f, bottles: 'custom' })); }}
+                    type="button"
+                    className={`qty-btn${isCustom ? ' qty-btn--active' : ''}`}
+                    onClick={() => chooseQty('custom')}
                   >
                     <span className="qty-btn__num" style={{ fontSize: '0.75rem', letterSpacing: '0.03em' }}>CUSTOM</span>
                     <span className="qty-btn__unit">btls</span>
                   </button>
                 </div>
-                {isCustomTile && (
+                {isCustom && (
                   <input
                     type="number"
-                    min="5"
+                    min={MIN_BOTTLES}
+                    max={MAX_BOTTLES}
+                    step="1"
                     className="qty-custom-input"
-                    placeholder="Enter number of bottles (min 5)"
-                    value={customTileQty}
-                    onChange={e => { setCustomTileQty(e.target.value); setCustomBottles(e.target.value); }}
+                    placeholder={`Enter number of bottles (min ${MIN_BOTTLES})`}
+                    value={customQty}
+                    onChange={e => setCustomQty(e.target.value)}
                     autoFocus
                   />
                 )}
+                {isCustom && customQty !== '' && !customValid && (
+                  <p className="qty-custom-error">Enter a whole number from {MIN_BOTTLES} to {MAX_BOTTLES.toLocaleString()}.</p>
+                )}
                 <div className="qty-price">
-                  {isCustomTile && customTileQty >= 5 ? (
+                  {price && (
                     <>
-                      <span className="qty-total">€{(parseInt(customTileQty, 10) * 32).toLocaleString()}</span>
-                      <span className="qty-per-bottle">€32.00 / bottle</span>
+                      <span className="qty-total">€{price.total.toLocaleString()}</span>
+                      <span className="qty-per-bottle">€{price.perBottle.toFixed(2)} / bottle</span>
+                      {price.save && <span className="qty-saving">{price.save}</span>}
                     </>
-                  ) : !isCustomTile ? (
-                    <>
-                      <span className="qty-total">€{tier.total.toLocaleString()}</span>
-                      <span className="qty-per-bottle">€{tier.perBottle.toFixed(2)} / bottle</span>
-                      {tier.save && <span className="qty-saving">{tier.save}</span>}
-                    </>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -504,7 +543,7 @@ export default function OliveOil() {
           {harvestDone ? (
             <p className="harvest-done">✓ You're on the list. We'll be in touch come harvest time.</p>
           ) : (
-            <form className="harvest-form" onSubmit={e => { e.preventDefault(); setHarvestDone(true); }}>
+            <form className="harvest-form" onSubmit={submitHarvest}>
               <input
                 type="email"
                 className="harvest-input"
@@ -513,8 +552,11 @@ export default function OliveOil() {
                 onChange={e => setHarvestEmail(e.target.value)}
                 required
               />
-              <button type="submit" className="harvest-btn">Notify Me</button>
+              <button type="submit" className="harvest-btn" disabled={harvestSending}>{harvestSending ? 'Sending…' : 'Notify Me'}</button>
             </form>
+          )}
+          {harvestError && !harvestDone && (
+            <p className="harvest-error" role="alert">{harvestError}</p>
           )}
           <p className="harvest-note">Join 1,200+ subscribers · Unsubscribe anytime · Harvest news only</p>
         </div>
@@ -577,21 +619,27 @@ export default function OliveOil() {
                   </div>
                   <div className="form-group">
                     <label>{t('oliveOil.numberOfBottles')}</label>
-                    <select name="bottles" value={form.bottles} onChange={handle}>
-                      {[5, 12, 25, 50, 100].map(n => <option key={n} value={n}>{n} bottles</option>)}
+                    <select name="bottles" value={String(selection)} onChange={e => chooseQty(e.target.value)}>
+                      {orderTiers.map(t => <option key={t.qty} value={t.qty}>{t.qty} bottles</option>)}
                       <option value="custom">Custom quantity…</option>
                     </select>
-                    {isCustomBottles && (
+                    {isCustom && (
                       <input
                         type="number"
-                        min="1"
-                        max="9999"
-                        value={customBottles}
-                        onChange={e => setCustomBottles(e.target.value)}
-                        placeholder="Enter number of bottles"
+                        min={MIN_BOTTLES}
+                        max={MAX_BOTTLES}
+                        step="1"
+                        value={customQty}
+                        onChange={e => setCustomQty(e.target.value)}
+                        placeholder={`Enter number of bottles (min ${MIN_BOTTLES})`}
                         required
                         style={{ marginTop: '10px' }}
                       />
+                    )}
+                    {price && (
+                      <p className="form-hint" style={{ marginTop: '8px' }}>
+                        {selectedQty} bottles · €{price.perBottle.toFixed(2)} / bottle · €{price.total.toLocaleString()} total
+                      </p>
                     )}
                   </div>
                 </div>
@@ -608,7 +656,7 @@ export default function OliveOil() {
                     {error}
                   </div>
                 )}
-                <button type="submit" className="btn btn-primary" disabled={loading || (isCustomBottles && !customBottles)}>
+                <button type="submit" className="btn btn-primary" disabled={loading || !selectedQty}>
                   {loading ? t('common.sending') : t('common.sendEnquiry')}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>

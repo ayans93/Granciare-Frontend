@@ -270,3 +270,9 @@
     font-size: 13px;
   }
 }
+/* A booking's arrival day, selectable only as a check-out */
+.drp-cell--checkout-only { position: relative; }
+.drp-cell--checkout-only::after {
+  content: ''; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
+  margin-left: -2px; border-radius: 50%; background: var(--stone-lt, #b9ae9f);
+}

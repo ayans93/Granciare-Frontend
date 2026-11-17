@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSitePhotos, applyAdminPhotos } from '../lib/sitePhotos';
 import { useTranslation } from '../i18n/LanguageContext';
 import './GalleryShowcase.css';
 
@@ -359,11 +360,26 @@ function ShowcaseCard({ showcase, t }) {
   );
 }
 
+// Admin photo categories feeding each card, and the category whose featured photo leads it
+const ADMIN_GROUPS = [
+  { categories: ['landscape'], featured: 'landscape' },
+  { categories: ['pool', 'kitchen', 'dining'], featured: 'pool' },
+  { categories: ['bedrooms', 'living_areas', 'bathrooms', 'lounge_bar'], featured: 'bedrooms' },
+];
+
 export default function GalleryShowcase() {
   const { t, ta } = useTranslation();
+  const adminPhotos = useSitePhotos();
+  const baseShowcases = useMemo(() => showcases.map((s, i) => {
+    const items = applyAdminPhotos(
+      s.images.map((src, j) => ({ src, caption: s.captions[j] || '' })),
+      adminPhotos, ADMIN_GROUPS[i].categories, ADMIN_GROUPS[i].featured,
+    );
+    return { ...s, images: items.map(x => x.src), captions: items.map(x => x.caption), cover: items[0]?.src || s.cover };
+  }), [adminPhotos]);
   // Get translated card texts and merge with the static image data
   const showcaseTexts = ta('granciare.showcase');
-  const mergedShowcases = showcases.map((s, i) => ({
+  const mergedShowcases = baseShowcases.map((s, i) => ({
     ...s,
     name: showcaseTexts[i]?.name ?? s.name,
     tag:  showcaseTexts[i]?.tag  ?? s.tag,

@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import './PasswordGate.css';
 
-// ── Allowed credentials (case-insensitive email) ───────────
-const CREDENTIALS = [
-  { email: 'info@granciare.com',                 password: 'Granciare@2026' },
-  { email: 'info@agriturismocolleverde.net',      password: 'Granciare@2026' },
-  { email: 'gaurav@drishyamfilms.com',            password: 'Granciare@2026' },
-  { email: 'ayan@dviu.in',                        password: 'Granciare@2026' },
-  { email: 'mmundra@gmail.com',                   password: 'Granciare@2026' },
-  { email: 'mundradisha13@gmail.com',             password: 'Granciare@2026' },
-  { email: 'armoryan@gmail.com',                  password: 'Granciare@2026' },
-];
+// Credentials are checked on the server (/api/gate); none are stored in this file.
 
 const SESSION_KEY = '_gc_auth';
 
@@ -28,31 +19,30 @@ export default function PasswordGate({ onAuth }) {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault();
+    if (loading) return;
     setError('');
     setLoading(true);
-
-    // small artificial delay so the button feedback feels intentional
-    setTimeout(() => {
-      const normalised = email.trim().toLowerCase();
-      const match = CREDENTIALS.find(c => c.email.toLowerCase() === normalised);
-
-      if (!match) {
-        setError('No account found for that email address.');
+    try {
+      const res = await fetch('/api/gate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || 'Could not sign in. Please try again.');
         setLoading(false);
         return;
       }
-      if (match.password !== password) {
-        setError('Incorrect password. Please try again.');
-        setLoading(false);
-        return;
-      }
-
       try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
       setLoading(false);
       onAuth();
-    }, 400);
+    } catch {
+      setError('Could not reach the server. Please check your connection and try again.');
+      setLoading(false);
+    }
   };
 
   return (

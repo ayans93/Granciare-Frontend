@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import BookingWidget from '../components/BookingWidget';
 import GalleryShowcase from '../components/GalleryShowcase';
 import PhotoAlbum from '../components/PhotoAlbum';
+import { useSitePhotos, featuredPhoto } from '../lib/sitePhotos';
 import LocationSection from '../components/LocationSection';
 import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
@@ -116,6 +117,8 @@ const DEFAULT_TESTIMONIALS = [
 export default function Granciare() {
   const [albumOpen, setAlbumOpen] = useState(false);
   const { t, ta } = useTranslation();
+  const adminPhotos = useSitePhotos();
+  const oliveTeaser = featuredPhoto(adminPhotos, 'olive_oil') || '/images/olive-oil/teaser.jpeg';
   const amenities = ta('granciare.amenities').map((a, i) => ({ ...a, Icon: AMENITY_ICONS[i] }));
 
   // Testimonials — fetch from Supabase, fall back to defaults
@@ -357,7 +360,7 @@ export default function Granciare() {
         <div className="container">
           <div className="olive-teaser">
             <div className="olive-teaser__img">
-              <img src="/images/olive-oil/teaser.jpeg" alt="Granciare Olive Oil" />
+              <img src={oliveTeaser} alt="Granciare Olive Oil" />
             </div>
             <div className="olive-teaser__content">
               <span className="section-label">{t('granciare.oliveLabel')}</span>
