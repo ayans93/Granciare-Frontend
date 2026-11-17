@@ -21,15 +21,18 @@ const CATEGORIES = [
   'bedrooms', 'living_areas', 'bathrooms', 'lounge_bar', 'olive_oil', 'awards',
 ]
 
+// Model used to guess the category; override with CATEGORISE_MODEL in Vercel if needed
+export const CATEGORISE_MODEL = process.env.CATEGORISE_MODEL || 'claude-haiku-5-5'
+
 async function categorise(base64, mediaType, fallback) {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('categorise skipped: ANTHROPIC_API_KEY not set')
-    return { category: fallback, categorised: false }
+    return { category: fallback, categorised: false, reason: 'ANTHROPIC_API_KEY is not set in Vercel' }
   }
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const msg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
+      model: CATEGORISE_MODEL,
       max_tokens: 32,
       messages: [{
         role: 'user',
@@ -57,10 +60,11 @@ async function categorise(base64, mediaType, fallback) {
     const cat = msg.content[0].text.trim().toLowerCase().replace(/[^a-z_]/g, '')
     if (CATEGORIES.includes(cat)) return { category: cat, categorised: true }
     console.error('categorise: unexpected answer', cat)
+    return { category: fallback, categorised: false, reason: `Unexpected answer from the model: "${cat}"` }
   } catch (e) {
     console.error('categorise failed:', e?.message || e)
+    return { category: fallback, categorised: false, reason: String(e?.message || e).slice(0, 200) }
   }
-  return { category: fallback, categorised: false }
 }
 
 export const config = { api: { bodyParser: false } }
@@ -136,7 +140,7 @@ export default async function handler(req, res) {
 
     // AI categorisation
     const base64 = fileBuffer.toString('base64')
-    const { category, categorised } = await categorise(base64, fileMediaType, tab === 'oil' ? 'olive_oil' : 'landscape')
+    const { category, categorised, reason } = await categorise(base64, fileMediaType, tab === 'oil' ? 'olive_oil' : 'landscape')
 
     // Upload to Supabase Storage
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(filePath, fileBuffer, {
@@ -147,7 +151,7 @@ export default async function handler(req, res) {
 
     const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
 
-    return res.status(200).json({ publicUrl, category, categorised })
+    return res.status(200).json({ publicUrl, category, categorised, reason })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })

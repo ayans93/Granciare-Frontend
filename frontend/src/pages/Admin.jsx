@@ -491,7 +491,7 @@ function Photos() {
         const { error } = await supabase.from('photos').insert({ storage_path: path, public_url: json.publicUrl, category: json.category, alt_text: file.name })
         if (error) throw new Error(error.message)
         await supabase.from('notifications').insert({ type: 'photo_added', title: 'New photo added', body: `Category: ${json.category}` })
-        if (json.categorised === false) guessed.push(file.name)
+        if (json.categorised === false) guessed.push(`${file.name}${json.reason ? ` (${json.reason})` : ''}`)
       } catch (e) {
         failed.push(`${file.name}: ${e.message}`)
       }

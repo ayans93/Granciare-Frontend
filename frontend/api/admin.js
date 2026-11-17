@@ -3,7 +3,9 @@
  *   { action: 'create-user', name, email, password }
  *   { action: 'delete-user', id }
  *   { action: 'ical-url' }            → feed URL, including the token if ICAL_SECRET is set
+ *   { action: 'ai-status' }           → checks the photo auto-categoriser (API key + model)
  */
+import Anthropic from '@anthropic-ai/sdk'
 import { getServerClient, requireAdmin } from './_lib/supabase.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -51,6 +53,19 @@ export default async function handler(req, res) {
     const secret = process.env.ICAL_SECRET
     const url = `https://${host}/api/calendar.ics${secret ? `?token=${encodeURIComponent(secret)}` : ''}`
     return res.status(200).json({ url, protected: Boolean(secret) })
+  }
+
+  if (body.action === 'ai-status') {
+    // Checks the photo auto-categoriser without uploading anything
+    const model = process.env.CATEGORISE_MODEL || 'claude-haiku-5-5'
+    if (!process.env.ANTHROPIC_API_KEY) return res.status(200).json({ ok: false, model, keySet: false, error: 'ANTHROPIC_API_KEY is not set in Vercel' })
+    try {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const msg = await anthropic.messages.create({ model, max_tokens: 5, messages: [{ role: 'user', content: 'Reply with the single word: pool' }] })
+      return res.status(200).json({ ok: true, model, keySet: true, reply: msg.content?.[0]?.text?.trim() })
+    } catch (e) {
+      return res.status(200).json({ ok: false, model, keySet: true, error: String(e?.message || e).slice(0, 300) })
+    }
   }
 
   return res.status(400).json({ error: 'Unknown action.' })
