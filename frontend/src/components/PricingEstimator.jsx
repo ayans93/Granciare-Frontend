@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { nightsLabel } from '../lib/plural';
 import './PricingEstimator.css';
 
 let cache;
@@ -59,7 +60,7 @@ export function estimateStay(checkIn, checkOut, ranges) {
 }
 
 export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [ranges, setRanges] = useState(cache ?? null);
   useEffect(() => {
     let alive = true;
@@ -77,7 +78,7 @@ export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
   const total = Math.round(est.total * share);
   const min = Math.round(est.min * share);
   const max = Math.round(est.max * share);
-  const nightLabel = `${nights} ${nights === 1 ? t('booking.night') : t('booking.nights')}`;
+  const nightLabel = nightsLabel(nights, t, lang);
 
   return (
     <div className="pe">

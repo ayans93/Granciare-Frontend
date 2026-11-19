@@ -503,6 +503,10 @@
 .field-count { font-size: 11px; color: var(--adm-text-sub); text-align: right; margin-top: 4px; }
 .confirm-ref { font-size: 11px; font-weight: 600; color: var(--adm-gold); margin-left: 6px; letter-spacing: 0.04em; }
 .req-message, .confirm-msg { white-space: pre-wrap; }
+/* Long unbroken text (names, messages) must wrap instead of stretching the lists */
+.data-table td, .req-detail-inner p, .confirm-card__body, .notif-item, .testimonial-text { overflow-wrap: anywhere; word-break: break-word; }
+.data-table td { max-width: 360px; }
+.req-detail td { max-width: none; }
 .admin-menu-btn { display: none; background: none; border: 1px solid var(--adm-border); color: var(--adm-text); font-size: 18px; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-right: 12px; }
 .dark .form-card input, .dark .form-card select, .dark .form-card textarea { background: var(--adm-bg); color: var(--adm-text); border-color: var(--adm-border); }
 

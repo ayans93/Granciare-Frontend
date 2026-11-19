@@ -18,6 +18,8 @@ export function checkOrder(sizeId, qty) {
   return '';
 }
 
-export function formatVolume(ml) {
-  return ml >= 1000 ? `${(ml / 1000).toLocaleString('en', { maximumFractionDigits: 2 })} L` : `${ml} ml`;
+export function formatVolume(ml, lang = 'en') {
+  let n;
+  try { n = (ml / 1000).toLocaleString(lang, { maximumFractionDigits: 2 }); } catch { n = String(+(ml / 1000).toFixed(2)); }
+  return ml >= 1000 ? `${n} L` : `${ml} ml`;
 }

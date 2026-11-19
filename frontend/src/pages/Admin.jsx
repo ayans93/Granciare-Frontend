@@ -255,6 +255,28 @@ function StayRequests({ adminName }) {
   }
 
   async function changeStatus(id, status) {
+    // Never confirm two stays for the same nights. A check-out day can be the next check-in day.
+    if (status === 'confirmed') {
+      const row = rows.find(r => r.id === id)
+      if (row?.check_in && row?.check_out) {
+        const { data: clash, error } = await supabase.from('stay_requests')
+          .select('id, name, check_in, check_out')
+          .eq('status', 'confirmed').neq('id', id)
+          .lt('check_in', row.check_out).gt('check_out', row.check_in)
+          .limit(1)
+        if (error) {
+          window.alert('Could not check availability. Please try again.')
+          fetch()
+          return
+        }
+        if (clash && clash.length) {
+          const c = clash[0]
+          window.alert(`These dates overlap a confirmed stay: ${c.name} (${fmt(c.check_in)} → ${fmt(c.check_out)}).\n\nChange or revert that booking first.`)
+          fetch()
+          return
+        }
+      }
+    }
     await supabase.from('stay_requests').update({ status }).eq('id', id)
     await supabase.from('notifications').insert({
       type: 'status_changed', title: 'Stay request updated',

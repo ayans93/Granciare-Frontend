@@ -5,6 +5,8 @@ import PhoneInput from './PhoneInput';
 import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { isValidPhone } from '../lib/validation';
+import { nightsLabel } from '../lib/plural';
+import { tagLabel } from '../lib/tagNames';
 
 const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ', ru: 'ru-RU' };
 const DEFAULT_TAGS = [
@@ -58,7 +60,8 @@ export default function BookingWidget({ variant = 'light' }) {
 
   const addTag = (tag) => {
     const trimmed = tag.trim().slice(0, 60);
-    if (trimmed && !tags.some(x => x.toLowerCase() === trimmed.toLowerCase())) setTags(prev => [...prev, trimmed]);
+    const same = x => [x, tagLabel(x, lang)].some(v => v.toLowerCase() === trimmed.toLowerCase());
+    if (trimmed && !tags.some(same)) setTags(prev => [...prev, trimmed]);
   };
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const handleTagInput = (e) => {
@@ -262,7 +265,7 @@ export default function BookingWidget({ variant = 'light' }) {
             </div>
             <div className="booking-confirm__row">
               <span className="booking-confirm__label">{t('booking.confirmNights')}</span>
-              <span className="booking-confirm__value">{nights} {nights === 1 ? t('booking.night') : t('booking.nights')}</span>
+              <span className="booking-confirm__value">{nightsLabel(nights, t, lang)}</span>
             </div>
             {partialAllowed && (
               <div className="booking-confirm__row">
@@ -277,7 +280,7 @@ export default function BookingWidget({ variant = 'light' }) {
             {tags.length > 0 && (
               <div className="booking-confirm__row booking-confirm__row--extras">
                 <span className="booking-confirm__label">{t('common.specialRequests')}</span>
-                <span className="booking-confirm__value">{tags.join(' · ')}</span>
+                <span className="booking-confirm__value">{tags.map(x => tagLabel(x, lang)).join(' · ')}</span>
               </div>
             )}
           </div>
@@ -423,7 +426,7 @@ export default function BookingWidget({ variant = 'light' }) {
         <div className="booking-widget__row booking-widget__row--2">
           <div className="form-group">
             <label>{t('common.fullName')}</label>
-            <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.yourName')} required />
+            <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.yourName')} maxLength={100} required />
           </div>
           <div className="form-group">
             <label>{t('common.email')}</label>
@@ -450,8 +453,8 @@ export default function BookingWidget({ variant = 'light' }) {
             <div className="tag-selected">
               {tags.map(tag => (
                 <span key={tag} className="tag tag--selected">
-                  {tag}
-                  <button type="button" className="tag__remove" onClick={() => removeTag(tag)} aria-label={`Remove ${tag}`}>×</button>
+                  {tagLabel(tag, lang)}
+                  <button type="button" className="tag__remove" onClick={() => removeTag(tag)} aria-label={`Remove ${tagLabel(tag, lang)}`}>×</button>
                 </span>
               ))}
             </div>
@@ -484,7 +487,7 @@ export default function BookingWidget({ variant = 'light' }) {
                 type="button"
                 className="tag tag--suggestion"
                 onClick={() => addTag(s)}
-              >{s}</button>
+              >{tagLabel(s, lang)}</button>
             ))}
           </div>
 

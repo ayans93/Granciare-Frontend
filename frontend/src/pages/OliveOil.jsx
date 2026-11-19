@@ -94,6 +94,8 @@ export default function OliveOil() {
   const perBottle = sizePrices[size.priceKey] || null;
   const price = selectedQty && perBottle ? { perBottle, total: Math.round(selectedQty * perBottle * 100) / 100 } : null;
   // 5 L bottles ship only to Europe and the USA
+  const [countryAttempted, setCountryAttempted] = useState(false);
+  const countryMissing = countryAttempted && !form.country;
   const notServiceable = Boolean(size.shippingNotice && form.country && !FIVE_L_SERVICEABLE(form.country));
   const countryOptions = COUNTRY_CODES.map(code => ({ code, name: countryName(code, lang) })).sort((a, b) => a.name.localeCompare(b.name, lang));
 
@@ -162,13 +164,14 @@ export default function OliveOil() {
     e.preventDefault();
     if (submittingRef.current) return;           // ignore double clicks
     setError('');
+    setCountryAttempted(true);
     if (!selectedQty) {
       setError(qtyErrorText || t('olv.customError', { min: 1, max: size.maxQty }));
       return;
     }
     if (!form.name.trim()) { setError(t('bk.errName')); return; }
     if (!isValidPhone(form.phone)) { setError(t('bk.errPhone')); return; }
-    if (!form.country) { setError(t('olv.errCountry')); return; }
+    if (!form.country) { return; }               // shown under the Country field
     if (notServiceable) { setError(t('olv.notServiceable')); return; }
     submittingRef.current = true;
     setLoading(true);
@@ -368,7 +371,7 @@ export default function OliveOil() {
                   ) : selectedQty ? (
                     <span className="qty-per-bottle">{t('bk.priceOnRequest')}</span>
                   ) : null}
-                  {selectedQty && <span className="qty-volume">{t('olv.totalVolume', { v: formatVolume(selectedQty * size.ml) })}</span>}
+                  {selectedQty && <span className="qty-volume">{t('olv.totalVolume', { v: formatVolume(selectedQty * size.ml, lang) })}</span>}
                 </div>
               </div>
 
@@ -603,7 +606,7 @@ export default function OliveOil() {
                 <div className="olive-form__row">
                   <div className="form-group">
                     <label>{t('common.yourName')}</label>
-                    <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.fullName')} required />
+                    <input type="text" name="name" value={form.name} onChange={handle} placeholder={t('common.fullName')} maxLength={100} required />
                   </div>
                   <div className="form-group">
                     <label>{t('oliveOil.phoneNumber')}</label>
@@ -660,10 +663,18 @@ export default function OliveOil() {
                     <select
                       name="country"
                       value={form.country}
-                      onChange={e => { setCountryTouched(true); setCountryGuessed(false); setForm(f => ({ ...f, country: e.target.value })); setError(''); }}
-                      className={notServiceable ? 'input--error' : undefined}
+                      onChange={e => {
+                        const country = e.target.value;
+                        // Picking a country keeps it; clearing it lets the address guess again
+                        setCountryTouched(Boolean(country)); setCountryGuessed(false);
+                        setForm(f => ({ ...f, country: country || guessCountry(f.address) }));
+                        if (!country) setCountryGuessed(Boolean(guessCountry(form.address)));
+                        setError('');
+                      }}
+                      className={notServiceable || countryMissing ? 'input--error' : undefined}
                       autoComplete="country"
-                      required
+                      aria-required="true"
+                      aria-invalid={countryMissing || notServiceable}
                     >
                       <option value="">{t('olv.selectCountry')}</option>
                       {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -672,6 +683,7 @@ export default function OliveOil() {
                       <p className="form-hint" style={{ marginTop: '6px' }}>{t('olv.countryDetected')}</p>
                     )}
                     {notServiceable && <p className="form-hint form-hint--error" role="alert" style={{ marginTop: '6px' }}>{t('olv.notServiceable')}</p>}
+                    {countryMissing && <p className="form-hint form-hint--error" role="alert" style={{ marginTop: '6px' }}>{t('olv.errCountry')}</p>}
                   </div>
                 </div>
                 <div className="form-group">

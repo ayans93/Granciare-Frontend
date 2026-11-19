@@ -333,7 +333,7 @@ export default async function handler(req, res) {
   }
 
   const data = {
-    name:            String(name).trim().slice(0, 200),
+    name:            String(name).trim().slice(0, 120),
     email:           String(email).trim().slice(0, 200),
     phone,
     checkIn,

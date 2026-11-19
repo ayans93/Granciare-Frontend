@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   const sb = getServerClient();
   if (!sb) return res.status(500).json({ error: 'Ordering is temporarily unavailable. Please try WhatsApp.' });
 
-  const cleanName = String(name).trim().slice(0, 200);
+  const cleanName = String(name).trim().slice(0, 120);
   const note = String(message || '').trim().slice(0, 3000);
   const base = {
     name: cleanName,
