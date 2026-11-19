@@ -6,6 +6,7 @@ import { isValidPhone } from '../lib/validation';
 import { BOTTLE_SIZES, sizeById, checkOrder, formatVolume } from '../lib/oilRules';
 import { COUNTRY_CODES, guessCountry, countryName, FIVE_L_SERVICEABLE } from '../lib/countries';
 import './OliveOil.css';
+import { anyInView } from '../lib/inView';
 
 const GALLERY_IMGS = [
   { src: '/images/olive-oil/solivé-bottle-500ml.png',             alt: 'Solivé 500ml bottle' },
@@ -152,7 +153,8 @@ export default function OliveOil() {
   const [showSticky, setShowSticky] = useState(false);
   const heroRef = useRef(null);
   useEffect(() => {
-    const onScroll = () => setShowSticky(window.scrollY > 700);
+    // Hidden while the form it points to (or the footer) is on screen, so it never covers them
+    const onScroll = () => setShowSticky(window.scrollY > 700 && !anyInView(['#order', '#enquire', 'footer']));
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);

@@ -45,14 +45,21 @@ export function prettify(alt = '') {
  *  - the featured photo of `featuredCategory` moves to the front
  * items: [{ src, caption }]. Falls back to the built-in list if anything is off.
  */
-export function applyAdminPhotos(items, photos, categories = [], featuredCategory) {
+export function applyAdminPhotos(items, photos, categories = [], featuredCategory, { strict = false } = {}) {
   if (!photos) return items;
-  const inAdmin = new Set(photos.map(photoKey));
+  const byKey = new Map(photos.map(p => [photoKey(p), p]));
   const builtIn = new Set(items.map(i => keyOf(i.src)));
 
-  let out = items.filter(i => inAdmin.has(keyOf(i.src)));
-  const uploads = photos.filter(p => categories.includes(p.category) && !isBundled(p) && !builtIn.has(photoKey(p)));
-  out = out.concat(uploads.map(p => ({ src: p.url, caption: prettify(p.alt) })));
+  // Built-in images stay unless deleted in admin. In strict mode (the photo album)
+  // they must also still belong to one of this section's admin categories.
+  let out = items.filter(i => {
+    const p = byKey.get(keyOf(i.src));
+    return p && (!strict || !categories.length || categories.includes(p.category));
+  });
+  // Every other admin photo in these categories is added: uploads, and built-in
+  // images that admin has moved into this category.
+  const extra = photos.filter(p => categories.includes(p.category) && !builtIn.has(photoKey(p)));
+  out = out.concat(extra.map(p => ({ src: isBundled(p) ? p.path : p.url, caption: prettify(p.alt) })));
 
   if (featuredCategory) {
     const f = photos.find(p => p.featured && p.category === featuredCategory);

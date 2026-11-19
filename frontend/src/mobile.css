@@ -1,0 +1,89 @@
+/* ─────────────────────────────────────────────────────────────
+   Mobile layout pass (phones and small tablets).
+   Loaded after every page stylesheet; rules are prefixed with `body`
+   so they win over the page CSS without !important.
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Tablets and phones ─────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* Our Story · Poderetto: stack image above text (the page rule kept two columns) */
+  body .story-poderetto .story-land__grid { grid-template-columns: 1fr; gap: 32px; }
+  body .story-poderetto .story-land__images { height: auto; }
+  body .story-poderetto .story-land__img-main { position: relative; width: 100%; height: 280px; }
+}
+
+/* ── Phones ─────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+
+  /* Home · headline stats: three across instead of three tall rows */
+  body .granciare__stats { flex-direction: row; justify-content: space-between; gap: 12px; margin-top: 32px; padding-top: 28px; }
+  body .granciare__stats .stat { flex: 1; min-width: 0; }
+  body .stat__number { font-size: 30px; margin-bottom: 6px; }
+  body .stat__label { font-size: 10px; letter-spacing: 0.08em; line-height: 1.35; display: block; }
+
+  /* Home · "Every comfort, curated": two compact columns */
+  body .amenities__grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  body .amenity-card { padding: 20px 14px 22px; }
+  body .amenity-card__icon-wrap { width: 44px; height: 44px; margin-bottom: 14px; }
+  body .amenity-card__icon-wrap svg { width: 20px; height: 20px; }
+  body .amenity-card__label { font-size: 11px; letter-spacing: 0.06em; margin-bottom: 6px; }
+  body .amenity-card__desc { font-size: 12px; line-height: 1.55; }
+
+  /* Home · Facilities and Amenities: tighter rows, bigger filter chips */
+  body .fac-tile { gap: 12px; padding: 12px 0; }
+  body .fac-tile__icon { width: 40px; height: 40px; }
+  body .fac-tile__icon svg { width: 18px; height: 18px; }
+  body .fac-tile__name { font-size: 12px; margin: 2px 0 4px; }
+  body .fac-tile__desc { font-size: 12.5px; line-height: 1.5; }
+  body .fac-chip { min-height: 38px; padding: 8px 14px; }
+
+  /* Home · "The estate in images": two-column mosaic instead of one photo per row */
+  body .gallery__grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: none; grid-auto-rows: 140px; gap: 3px; }
+  body .gallery__item--1 { grid-column: 1 / 3; grid-row: span 2; }
+  body .gallery__item--4 { grid-column: auto; }
+
+  /* Booking form · tap-friendly tags */
+  body .tag { min-height: 34px; padding-top: 6px; padding-bottom: 6px; }
+
+  /* Sticky "Book now" / "Order now" bars: one slim line */
+  body .sticky-book__inner, body .sticky-order__inner { padding: 10px 16px; gap: 12px; }
+  body .sticky-book__info, body .sticky-order__info { min-width: 0; }
+  body .sticky-book__name, body .sticky-order__name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body .sticky-book__sub, body .sticky-order__price { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body .sticky-book__btn, body .sticky-order__btn { padding: 11px 14px; font-size: 11px; }
+
+  /* Olive Oil · chemistry panel: 2 × 2 grid, all four values visible */
+  body .chem-panel { grid-template-columns: 1fr 1fr; padding: 4px 0; }
+  body .chem-panel .chem-divider { display: none; }
+  body .chem-panel .chem-stat,
+  body .chem-panel .chem-stat:nth-child(n) { display: flex; padding: 14px 8px; }
+  body .chem-panel .chem-stat:nth-child(1),
+  body .chem-panel .chem-stat:nth-child(5) { border-right: 1px solid var(--cream-dark); }
+  body .chem-panel .chem-stat:nth-child(1),
+  body .chem-panel .chem-stat:nth-child(3) { border-bottom: 1px solid var(--cream-dark); }
+  body .chem-key { font-size: 10px; }
+
+  /* Olive Oil · facts (7,000 trees, 5 hrs…): 2 × 2 instead of four tall tiles */
+  body .olive-facts { grid-template-columns: repeat(2, 1fr); padding-top: 32px; }
+  body .olive-fact { padding: 18px 14px; gap: 6px; }
+  body .olive-fact__number { font-size: 30px; }
+  body .olive-fact__label { font-size: 10px; letter-spacing: 0.06em; line-height: 1.4; }
+
+  /* Olive Oil · small labels readable */
+  body .qty-selector__label, body .qty-btn__unit, body .cert-strip-label,
+  body .tasting-compact__label { font-size: 10px; }
+
+  /* Olive Oil · WhatsApp bubble: smaller and just above the slim order bar */
+  body .wa-float { bottom: 76px; right: 12px; }
+  body .wa-float__btn { width: 48px; height: 48px; }
+  body .wa-float__btn svg { width: 24px; height: 24px; }
+
+  /* Olive Oil · harvest sign-up: email box above the button so nothing is cut off */
+  body .harvest-form { flex-direction: column; gap: 8px; }
+  body .harvest-input { min-width: 0; width: 100%; border-right: 1px solid rgba(255,255,255,0.3); }
+  body .harvest-btn { width: 100%; }
+
+  /* Footer · tap-friendly links (the sticky bars hide when the footer is on screen) */
+  body .footer__links a { display: inline-block; padding: 6px 0; }
+  body .footer__legal a { display: inline-block; padding: 6px 0; }
+}

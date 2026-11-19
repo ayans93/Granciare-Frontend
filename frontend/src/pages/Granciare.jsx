@@ -8,6 +8,7 @@ import LocationSection from '../components/LocationSection';
 import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import './Granciare.css';
+import { anyInView } from '../lib/inView';
 
 /* ── SVG Icons for amenities ─────────────────────────────── */
 const IconPool = () => (
@@ -184,7 +185,8 @@ export default function Granciare() {
   // Sticky "Book Now" bar
   const [showSticky, setShowSticky] = useState(false);
   useEffect(() => {
-    const onScroll = () => setShowSticky(window.scrollY > 600);
+    // Hidden while the form it points to (or the footer) is on screen, so it never covers them
+    const onScroll = () => setShowSticky(window.scrollY > 600 && !anyInView(['#book', 'footer']));
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);

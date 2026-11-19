@@ -277,7 +277,7 @@ export default function PhotoAlbum({ onClose, initialCategory = 'all' }) {
   const categories = useMemo(() => {
     const cats = CATEGORIES.slice(1).map(c => ({
       ...c,
-      images: applyAdminPhotos(c.images.map(src => ({ src })), adminPhotos, ADMIN_MAP[c.key] || [], ADMIN_FEATURED[c.key]).map(x => x.src),
+      images: applyAdminPhotos(c.images.map(src => ({ src })), adminPhotos, ADMIN_MAP[c.key] || [], ADMIN_FEATURED[c.key], { strict: true }).map(x => x.src),
     }));
     return [{ ...CATEGORIES[0], images: cats.flatMap(c => c.images) }, ...cats];
   }, [adminPhotos]);
