@@ -1,11 +1,13 @@
 /**
  * POST /api/oil-order — Solivé order enquiry.
  * Validates bottle size and quantity on the server (3 L cap for 250/500 ml, max 10 × 5 L),
- * stores it in oil_requests and raises an admin notification.
+ * stores it in oil_requests, raises an admin notification, emails the estate inbox
+ * and sends the customer an acknowledgement.
  */
 import { getServerClient } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
-import { sizeById, checkOrder } from './_lib/oilRules.js';
+import { sizeById, checkOrder, formatVolume } from './_lib/oilRules.js';
+import { escapeHtml as esc, sendMail, sendToEstate } from './_lib/mail.js';
 import { COUNTRY_CODES, FIVE_L_SERVICEABLE, countryName } from './_lib/countries.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,5 +57,49 @@ export default async function handler(req, res) {
   }
 
   await notify(sb, { type: 'oil_request', title: 'New oil order', body: `${cleanName} · ${qty} × ${size.label}`, related_id: data?.id });
-  return res.status(200).json({ success: true });
+
+  // Emails: estate inbox + customer acknowledgement (an email failure never fails the order)
+  const ref = data?.id ? 'SOL-' + String(data.id).replace(/-/g, '').slice(0, 6).toUpperCase() : '';
+  const order = {
+    ref, name: cleanName, email: base.email, phone: base.phone || '',
+    size: size.label, qty, volume: formatVolume(qty * size.ml),
+    address: String(address).trim().slice(0, 500), country: countryName(cc, 'en'), note,
+  };
+  const [estateEmailed, customerEmailed] = await Promise.all([
+    sendToEstate(`New Solivé order from ${order.name}${ref ? ` (${ref})` : ''} | ${qty} × ${size.label}`, estateHtml(order)).catch(() => false),
+    sendMail(order.email, `We've received your Solivé order${ref ? ` (${ref})` : ''} | Granciare Estate`, customerHtml(order)).catch(() => false),
+  ]);
+  return res.status(200).json({ success: true, ref: ref || null, estateEmailed, customerEmailed });
+}
+
+const row = (k, v) => v ? `<tr><td style="padding: 8px 0; color: #8a7f72; width: 150px; vertical-align: top;">${k}</td><td style="padding: 8px 0;">${esc(v).replace(/\n/g, '<br/>')}</td></tr>` : '';
+
+function frame(inner) {
+  return `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #1e1c1a;">
+      <div style="background: #1e1c1a; padding: 28px 32px;">
+        <h1 style="color: #c9a96e; font-size: 22px; margin: 0; letter-spacing: 0.05em;">Granciare Estate · Solivé</h1>
+      </div>
+      <div style="padding: 32px; background: #faf9f7; border: 1px solid #e8e0d4; font-size: 15px; line-height: 1.7;">${inner}</div>
+    </div>`;
+}
+
+function estateHtml(o) {
+  return frame(`
+    <p style="margin-top: 0;">A new Solivé order enquiry has arrived. It is in Admin &gt; Oil Requests.</p>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      ${row('Reference', o.ref)}${row('Name', o.name)}${row('Email', o.email)}${row('Phone', o.phone)}
+      ${row('Order', `${o.qty} × ${o.size} (${o.volume})`)}${row('Delivery address', o.address)}${row('Country', o.country)}${row('Message', o.note)}
+    </table>`);
+}
+
+function customerHtml(o) {
+  return frame(`
+    <p style="margin-top: 0;">Dear ${esc(o.name)},</p>
+    <p>Thank you for your Solivé order. We have received it and will confirm the price, shipping and payment details personally within 24 hours.</p>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0;">
+      ${row('Reference', o.ref)}${row('Order', `${o.qty} × ${o.size} (${o.volume})`)}${row('Delivery address', o.address)}${row('Country', o.country)}
+    </table>
+    <p>This is not yet a confirmed order. If you have any questions, reply to this email or message us on WhatsApp: +39 352 0730769.</p>
+    <p>Warm regards,<br/>The Granciare team</p>`);
 }
