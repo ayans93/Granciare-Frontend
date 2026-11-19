@@ -6,7 +6,7 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { isValidPhone } from '../lib/validation';
 import { nightsLabel } from '../lib/plural';
-import { tagLabel } from '../lib/tagNames';
+import { tagLabel, canonicalTag } from '../lib/tagNames';
 
 const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ', ru: 'ru-RU' };
 const DEFAULT_TAGS = [
@@ -59,9 +59,9 @@ export default function BookingWidget({ variant = 'light' }) {
 
 
   const addTag = (tag) => {
-    const trimmed = tag.trim().slice(0, 60);
-    const same = x => [x, tagLabel(x, lang)].some(v => v.toLowerCase() === trimmed.toLowerCase());
-    if (trimmed && !tags.some(same)) setTags(prev => [...prev, trimmed]);
+    // A known tag typed in any language is stored under its English name, so it can't be added twice
+    const trimmed = canonicalTag(tag.trim().slice(0, 60));
+    if (trimmed && !tags.some(x => canonicalTag(x).toLowerCase() === trimmed.toLowerCase())) setTags(prev => [...prev, trimmed]);
   };
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const handleTagInput = (e) => {
@@ -481,7 +481,7 @@ export default function BookingWidget({ variant = 'light' }) {
 
           {/* Suggestions */}
           <div className="tag-suggestions">
-            {suggestedTags.filter(s => !tags.some(x => x.toLowerCase() === s.toLowerCase())).map(s => (
+            {suggestedTags.filter(s => !tags.some(x => canonicalTag(x).toLowerCase() === canonicalTag(s).toLowerCase())).map(s => (
               <button
                 key={s}
                 type="button"

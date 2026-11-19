@@ -25,3 +25,12 @@ export function tagLabel(tag, lang = 'en') {
   const entry = TAGS[String(tag).trim().toLowerCase()];
   return (entry && entry[lang]) || tag;
 }
+
+/** If the text is a known tag in any language, return its English name; otherwise the text itself. */
+export function canonicalTag(text) {
+  const k = String(text).trim().toLowerCase();
+  for (const entry of Object.values(TAGS)) {
+    if (Object.values(entry).some(v => v.toLowerCase() === k)) return entry.en;
+  }
+  return String(text).trim();
+}
