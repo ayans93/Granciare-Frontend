@@ -525,3 +525,13 @@
   .cfg-grid { grid-template-columns: 1fr; }
   .tab-header { flex-wrap: wrap; gap: 12px; }
 }
+
+/* Partial-booking toggle + badge */
+.cfg-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.cfg-toggle .cfg-label { margin-right: 8px; }
+.cfg-toggle__opt {
+  min-width: 64px; padding: 7px 14px; font-size: 13px; font-family: inherit; cursor: pointer;
+  border: 1px solid var(--adm-border); background: var(--adm-bg); color: var(--adm-text); border-radius: 4px;
+}
+.cfg-toggle__opt--on { background: var(--adm-gold); border-color: var(--adm-gold); color: #fff; font-weight: 600; }
+.type-badge { margin-left: 6px; font-size: 10px; font-weight: 600; color: var(--adm-gold); background: rgba(184,151,106,0.15); padding: 2px 6px; border-radius: 8px; }

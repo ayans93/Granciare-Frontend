@@ -136,7 +136,7 @@ export default function OurStory() {
             <div>
               <span className="section-label">Poderetto · Coming Soon</span>
               <h2 className="section-title">The Second Chapter</h2>
-              <p className="story-body">Poderetto sits at the northern edge of the estate — quieter, more private, with its own distinct architecture and character. Where Granciare draws from the warmth of central Italian farmhouse tradition, Poderetto has been designed with a lighter touch.</p>
+              <p className="story-body">Poderetto sits at the northern edge of the estate, quieter, more private, with its own distinct architecture and character. Where Granciare draws from the warmth of central Italian farmhouse tradition, Poderetto has been designed with a lighter touch.</p>
               <p className="story-body mt-16">Two independent residences among the olive groves, sharing an infinity pool. A place for those who want Umbria without compromise.</p>
               <a href="/poderetto" className="btn btn-outline mt-32">{t('story.explorePoderetto')}</a>
             </div>

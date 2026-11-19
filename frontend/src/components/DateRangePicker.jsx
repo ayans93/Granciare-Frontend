@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import './DateRangePicker.css';
 
-const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ' };
+const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ', ru: 'ru-RU' };
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 // Month and weekday names in the visitor's language
 function monthName(year, month, locale) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { BOTTLE_SIZES, sizeById } from '../lib/oilRules'
 import './Admin.css'
 
 // ── CONSTANTS ──────────────────────────────────────────────
@@ -30,13 +31,18 @@ const PHOTO_CATEGORIES = [
 
 const FEATURED_SECTIONS = {
   landscape:   'Landscape',
-  pool:        'Pool & Amenities',
+  pool:        'Facilities and Amenities',
   bedrooms:    'Rooms & Suites',
   olive_oil:   'Olive Oil',
 }
 
-// Orderable tiers (minimum order is 5 bottles)
-const OIL_QUANTITIES = [5, 12, 25, 50, 100]
+// Bottle size shown on an oil order (own column, or written into the message by older setups)
+function oilSize(row) {
+  const z = sizeById(row.bottle_size)
+  if (z) return z.label
+  const m = /Bottle size:\s*([^\n]+)/.exec(row.message || '')
+  return m ? m[1].trim() : '500 ml'
+}
 
 const VILLA_PRICING_DEFAULTS = [
   { label: 'Low Season',          date_from: '2027-01-01', date_to: '2027-03-31', price_per_night: 2000 },
@@ -198,10 +204,10 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
         {isStay ? (
           <>
             <td>{fmt(row.check_in)} → {fmt(row.check_out)}</td>
-            <td>{nights(row.check_in, row.check_out)}n · {row.adults}A {row.children > 0 ? `${row.children}C` : ''}</td>
+            <td>{nights(row.check_in, row.check_out)}n · {row.adults}A {row.children > 0 ? `${row.children}C` : ''}{row.booking_type === 'floor' && <span className="type-badge">Floor</span>}</td>
           </>
         ) : (
-          <td>{row.quantity} bottles</td>
+          <td>{row.quantity} × {oilSize(row)}</td>
         )}
         <td>{fmt(row.created_at)}</td>
         <td className="req-actions" onClick={e => e.stopPropagation()}>
@@ -217,6 +223,7 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
           <td colSpan={isStay ? 7 : 6}>
             <div className="req-detail-inner">
               {isStay && <p><strong>Reference:</strong> {stayRef(row.id)}</p>}
+              {isStay && <p><strong>Booking:</strong> {row.booking_type === 'floor' ? 'One floor (up to 8 guests)' : 'Entire villa'}</p>}
               {row.phone && <p><strong>Phone:</strong> {row.phone}</p>}
               {(row.message || row.notes) && <p className="req-message"><strong>Message:</strong> {row.message || row.notes}</p>}
               {row.special_requests && <p><strong>Special requests:</strong> {row.special_requests}</p>}
@@ -341,7 +348,7 @@ function StayConfirmations() {
               <div className="confirm-card__body">
                 <p className="confirm-name">{r.name} <span className="confirm-ref">{stayRef(r.id)}</span></p>
                 <p className="confirm-meta">{r.email} {r.phone && `· ${r.phone}`}</p>
-                <p className="confirm-guests">{r.adults} adults{r.children > 0 ? `, ${r.children} children` : ''}</p>
+                <p className="confirm-guests">{r.booking_type === 'floor' ? 'One floor · ' : 'Entire villa · '}{r.adults} adults{r.children > 0 ? `, ${r.children} children` : ''}</p>
                 {r.special_requests && (
                   <div className="confirm-special">
                     <span>Special requests:</span> {r.special_requests}
@@ -433,7 +440,7 @@ function OilConfirmations() {
           {rows.map(r => (
             <div key={r.id} className="confirm-card">
               <div className="confirm-card__dates">
-                <span className="confirm-nights">{r.quantity} bottles</span>
+                <span className="confirm-nights">{r.quantity} × {oilSize(r)}</span>
               </div>
               <div className="confirm-card__body">
                 <p className="confirm-name">{r.name}</p>
@@ -497,7 +504,7 @@ function Photos() {
       }
     }
     if (failed.length) setUploadErr(`Could not upload ${failed.join(' · ')}`)
-    else if (guessed.length) setUploadErr(`The category could not be detected for ${guessed.join(', ')} — please check it below.`)
+    else if (guessed.length) setUploadErr(`The category could not be detected for ${guessed.join(', ')}. Please check it below.`)
     if (fileRef.current) fileRef.current.value = ''
     setUploading(false)
     fetchPhotos()
@@ -683,7 +690,7 @@ function Testimonials() {
           <div key={r.id} className={`testimonial-row ${!r.is_visible ? 'testimonial-row--hidden' : ''}`}>
             <div className="testimonial-stars">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
             <p className="testimonial-text">"{r.review_text}"</p>
-            <p className="testimonial-meta">— {r.reviewer_name}{r.location ? `, ${r.location}` : ''}{r.stay_date ? ` · ${r.stay_date}` : ''}</p>
+            <p className="testimonial-meta">{r.reviewer_name}{r.location ? `, ${r.location}` : ''}{r.stay_date ? ` · ${r.stay_date}` : ''}</p>
             <div className="testimonial-actions">
               <button className="btn-sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
               <button className="btn-sm" onClick={() => move(i, 1)} disabled={i === rows.length - 1} aria-label="Move down">↓</button>
@@ -723,10 +730,15 @@ function Pricing() {
     return ''
   }
 
+  // Price per bottle for each bottle size (stored in site_config)
   useEffect(() => {
-    supabase.from('oil_pricing').select('*').order('quantity').then(({ data }) => {
+    Promise.all([
+      supabase.from('site_config').select('key,value').in('key', BOTTLE_SIZES.map(z => z.priceKey)),
+      supabase.from('oil_pricing').select('quantity,price_per_bottle').eq('quantity', 5),
+    ]).then(([cfg, legacy]) => {
       const map = {}
-      ;(data || []).forEach(r => { map[r.quantity] = r.price_per_bottle })
+      ;(cfg.data || []).forEach(r => { map[r.key] = r.value })
+      if (!map.oil_price_500ml && legacy.data?.[0]?.price_per_bottle) map.oil_price_500ml = String(legacy.data[0].price_per_bottle)
       setOilPrices(map)
     })
     fetchVilla()
@@ -739,15 +751,16 @@ function Pricing() {
 
   async function saveAllOilPrices() {
     setPriceErr('')
-    const bad = OIL_QUANTITIES.filter(q => !(parseFloat(oilPrices[q]) > 0))
-    if (bad.length) { setPriceErr(`Enter a price above €0 for: ${bad.map(q => `${q} bottles`).join(', ')}.`); return }
+    // A blank price is allowed (shown as "Price on request"); anything entered must be above €0
+    const bad = BOTTLE_SIZES.filter(z => String(oilPrices[z.priceKey] ?? '').trim() !== '' && !(parseFloat(oilPrices[z.priceKey]) > 0))
+    if (bad.length) { setPriceErr(`Enter a price above €0 (or leave it blank) for: ${bad.map(z => z.label).join(', ')}.`); return }
     setOilSaving(true)
-    const upserts = OIL_QUANTITIES.map(qty => ({
-      quantity: qty,
-      price_per_bottle: Math.round(parseFloat(oilPrices[qty]) * 100) / 100,
-      updated_at: new Date().toISOString(),
-    }))
-    await supabase.from('oil_pricing').upsert(upserts)
+    const rows = BOTTLE_SIZES.map(z => {
+      const v = String(oilPrices[z.priceKey] ?? '').trim()
+      return { key: z.priceKey, value: v ? String(Math.round(parseFloat(v) * 100) / 100) : '' }
+    })
+    const { error } = await supabase.from('site_config').upsert(rows, { onConflict: 'key' })
+    if (error) { setOilSaving(false); setPriceErr(error.message); return }
     await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Oil pricing updated', body: 'All bottle prices saved' })
     setOilSaving(false)
     setOilSaved(true)
@@ -800,19 +813,20 @@ function Pricing() {
         {/* Olive oil pricing */}
         <div className="pricing-block">
           <h3>Olive Oil Bottle Pricing</h3>
-          <p className="pricing-note">Set the price per bottle for each tier. Custom quantities use the price of the largest tier they reach; "Save %" is measured against the 5-bottle price.</p>
+          <p className="pricing-note">Price per bottle for each size. Leave a size blank to show "Price on request". Order limits: 250 ml and 500 ml up to 3 L per order (12 × 250 ml or 6 × 500 ml); 5 L up to 10 bottles.</p>
           <table className="data-table pricing-table">
-            <thead><tr><th>Quantity</th><th>Price per bottle (€)</th></tr></thead>
+            <thead><tr><th>Bottle size</th><th>Price per bottle (€)</th></tr></thead>
             <tbody>
-              {OIL_QUANTITIES.map(qty => (
-                <tr key={qty}>
-                  <td>{qty} bottle{qty > 1 ? 's' : ''}</td>
+              {BOTTLE_SIZES.map(z => (
+                <tr key={z.id}>
+                  <td>{z.label}</td>
                   <td>
                     <input
                       type="number" step="0.50" min="0.5"
-                      value={oilPrices[qty] || ''}
-                      onChange={e => setOilPrices({ ...oilPrices, [qty]: e.target.value })}
+                      value={oilPrices[z.priceKey] || ''}
+                      onChange={e => setOilPrices({ ...oilPrices, [z.priceKey]: e.target.value })}
                       className="price-input"
+                      placeholder="On request"
                     />
                   </td>
                 </tr>
@@ -898,7 +912,7 @@ function Pricing() {
 }
 
 // ── LEADS TAB (Poderetto interest + harvest sign-ups) ─────
-const LEAD_KINDS = { poderetto: 'Poderetto interest', harvest: '2026 harvest sign-up' }
+const LEAD_KINDS = { poderetto: 'Poderetto interest', harvest: 'Next harvest sign-up' }
 function Leads() {
   const [rows, setRows] = useState([])
   const [err, setErr] = useState('')
@@ -1124,7 +1138,7 @@ function useSaver(config) {
 
 // ── GRANCIARE DETAILS ─────────────────────────────────────
 const STAT_KEYS = ['granciare_stat1_value', 'granciare_stat1_label', 'granciare_stat2_value', 'granciare_stat2_label', 'granciare_stat3_value', 'granciare_stat3_label']
-const DEFAULT_BOOKING_TAGS = ['Private Chef', 'Horse Riding', 'Cycling', 'Regular Cleaning', 'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions']
+const DEFAULT_BOOKING_TAGS = ['Private Chef', 'Truffle Hunting', 'Regular Cleaning', 'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions']
 function parseList(v, fallback) {
   try { const a = JSON.parse(v); return Array.isArray(a) ? a : fallback } catch { return fallback }
 }
@@ -1136,8 +1150,11 @@ function GranciareDetails() {
     granciare_stat3_value: '8',     granciare_stat3_label: 'Bedrooms',
     booking_tags: JSON.stringify(DEFAULT_BOOKING_TAGS),
     booking_default_tags: JSON.stringify(['Olive Oil Tour']),
+    allow_partial_bookings: 'no',
   })
   const stats = useSaver(config)
+  const partialSaver = useSaver(config)
+  const partialOn = String(config.allow_partial_bookings).toLowerCase() === 'yes'
   const tagsSaver = useSaver(config)
   const [newTag, setNewTag] = useState('')
   const set = key => v => setConfig(c => ({ ...c, [key]: v }))
@@ -1171,6 +1188,23 @@ function GranciareDetails() {
       <SaveButton saving={stats.saving} saved={stats.saved} onClick={() => stats.save(STAT_KEYS, validateStats)} />
 
       <div className="cfg-card cfg-card--spaced">
+        <h3 className="cfg-card__title">Booking form · partial bookings</h3>
+        <p className="cfg-intro">When on, guests choose "Book a floor" (up to 8 guests) or "Book entire villa" on the booking form. When off, the choice is hidden and every enquiry is for the entire villa.</p>
+        <div className="cfg-toggle" role="radiogroup" aria-label="Allow partial bookings">
+          <span className="cfg-label" style={{ marginBottom: 0 }}>Allow partial bookings</span>
+          {['yes', 'no'].map(v => (
+            <button key={v} type="button" role="radio" aria-checked={(partialOn ? 'yes' : 'no') === v}
+              className={`cfg-toggle__opt ${(partialOn ? 'yes' : 'no') === v ? 'cfg-toggle__opt--on' : ''}`}
+              onClick={() => setConfig(c => ({ ...c, allow_partial_bookings: v }))}>
+              {v === 'yes' ? 'Yes' : 'No'}
+            </button>
+          ))}
+        </div>
+        {partialSaver.err && <p className="form-err">{partialSaver.err}</p>}
+        <SaveButton saving={partialSaver.saving} saved={partialSaver.saved} onClick={() => partialSaver.save(['allow_partial_bookings'])} />
+      </div>
+
+      <div className="cfg-card cfg-card--spaced">
         <h3 className="cfg-card__title">Booking form · special-request tags</h3>
         <p className="cfg-intro">Tags guests can pick on the booking form. ★ marks the tags that are pre-selected.</p>
         <div className="cfg-tags">
@@ -1200,13 +1234,13 @@ function GranciareDetails() {
 const SOLIVE_KEYS = ['solive_acidity', 'solive_polyphenols', 'solive_harvest_year', 'solive_cultivar']
 function SoliveDetails() {
   const [config, setConfig] = useSiteConfig({
-    solive_acidity: '< 0.2%', solive_polyphenols: '487', solive_harvest_year: '2025', solive_cultivar: 'Moraiolo',
+    solive_acidity: '< 0.2%', solive_polyphenols: '487', solive_harvest_year: '2026-2027', solive_cultivar: 'Moraiolo',
   })
   const saver = useSaver(config)
   const set = key => v => setConfig(c => ({ ...c, [key]: v }))
   const validate = () => {
     if (SOLIVE_KEYS.some(k => !String(config[k] || '').trim())) return 'Every field needs to be filled in.'
-    if (!/^\d{4}$/.test(String(config.solive_harvest_year).trim())) return 'Harvest year must be a 4-digit year, e.g. 2025.'
+    if (!/^\d{4}(\s*[-–]\s*\d{4})?$/.test(String(config.solive_harvest_year).trim())) return 'Harvest year must be a year or season, e.g. 2026 or 2026-2027.'
     return ''
   }
   return (
@@ -1217,7 +1251,7 @@ function SoliveDetails() {
         <div className="cfg-grid">
           <ConfigField label="Acidity" max={12} value={config.solive_acidity} onChange={set('solive_acidity')} hint="e.g. < 0.2%" />
           <ConfigField label="Polyphenols mg/kg" max={8} value={config.solive_polyphenols} onChange={set('solive_polyphenols')} hint="e.g. 487" />
-          <ConfigField label="Harvest Year" max={4} value={config.solive_harvest_year} onChange={set('solive_harvest_year')} hint="e.g. 2025" />
+          <ConfigField label="Harvest Year" max={11} value={config.solive_harvest_year} onChange={set('solive_harvest_year')} hint="e.g. 2026-2027" />
           <ConfigField label="Cultivar" max={20} value={config.solive_cultivar} onChange={set('solive_cultivar')} hint="e.g. Moraiolo" />
         </div>
       </div>

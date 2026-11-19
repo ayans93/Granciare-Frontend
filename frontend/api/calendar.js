@@ -66,7 +66,7 @@ function buildIcal(rows) {
       `DTSTAMP:${now}`,
       `DTSTART;VALUE=DATE:${checkIn}`,
       `DTEND;VALUE=DATE:${checkOut}`,
-      'SUMMARY:Booked — Granciare Estate',
+      'SUMMARY:Booked · Granciare Estate',
       'DESCRIPTION:Confirmed stay at Granciare Estate',
       `LOCATION:Granciare Estate\\, Allerona\\, Umbria\\, Italy`,
       `STATUS:CONFIRMED`,

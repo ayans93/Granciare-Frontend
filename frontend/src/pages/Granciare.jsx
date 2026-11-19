@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import BookingWidget from '../components/BookingWidget';
 import GalleryShowcase from '../components/GalleryShowcase';
+import FacilitiesSection from '../components/FacilitiesSection';
 import PhotoAlbum from '../components/PhotoAlbum';
 import { useSitePhotos, featuredPhoto } from '../lib/sitePhotos';
 import LocationSection from '../components/LocationSection';
@@ -101,7 +102,7 @@ const DEFAULT_TESTIMONIALS = [
     rating: 5,
   },
   {
-    review_text: "Waking up to the Umbrian hills with a private chef preparing breakfast — this is what luxury travel should feel like.",
+    review_text: "Waking up to the Umbrian hills with a private chef preparing breakfast, this is what luxury travel should feel like.",
     reviewer_name: 'James & Ellie T.',
     location: 'London, UK',
     rating: 5,
@@ -281,6 +282,9 @@ export default function Granciare() {
       </section>
 
       {/* ── GALLERY SHOWCASE ─────────────────────────────────── */}
+      {/* ── FACILITIES & AMENITIES ───────────────────────────── */}
+      <FacilitiesSection />
+
       <GalleryShowcase />
 
       {/* ── LOCATION ─────────────────────────────────────────── */}

@@ -58,7 +58,7 @@ export function estimateStay(checkIn, checkOut, ranges) {
   };
 }
 
-export default function PricingEstimator({ checkIn, checkOut }) {
+export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
   const { t } = useTranslation();
   const [ranges, setRanges] = useState(cache ?? null);
   useEffect(() => {
@@ -71,7 +71,12 @@ export default function PricingEstimator({ checkIn, checkOut }) {
   const est = estimateStay(checkIn, checkOut, ranges);
   if (!est) return null;
 
-  const { nights, complete, total, min, max, labels } = est;
+  const { nights, complete, labels } = est;
+  // Admin rates are for the whole villa; a single floor is half the villa rate
+  const share = floor ? 0.5 : 1;
+  const total = Math.round(est.total * share);
+  const min = Math.round(est.min * share);
+  const max = Math.round(est.max * share);
   const nightLabel = `${nights} ${nights === 1 ? t('booking.night') : t('booking.nights')}`;
 
   return (
@@ -84,7 +89,7 @@ export default function PricingEstimator({ checkIn, checkOut }) {
       {complete ? (
         <div className="pe__range">
           <div className="pe__range-row">
-            <span className="pe__range-label">{t('pricing.perNight')}{labels.length ? ` · ${labels.join(' / ')}` : ''}</span>
+            <span className="pe__range-label">{t('pricing.perNight')}{floor ? ` · ${t('bk.bookFloor')}` : ''}{labels.length ? ` · ${labels.join(' / ')}` : ''}</span>
             <span className="pe__range-value">{min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`}</span>
           </div>
           <div className="pe__range-row pe__range-row--estimate">
@@ -102,7 +107,7 @@ export default function PricingEstimator({ checkIn, checkOut }) {
       )}
 
       <p className="pe__disclaimer">
-        {t('pricing.disclaimer')}
+        {floor ? t('bk.disclaimerFloor') : t('pricing.disclaimer')}
       </p>
     </div>
   );

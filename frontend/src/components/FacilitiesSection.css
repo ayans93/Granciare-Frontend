@@ -1,0 +1,58 @@
+.fac-section { background: var(--warm-white, #faf8f4); }
+
+.fac-filters {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px; margin: -16px auto 40px;
+}
+.fac-filters__label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--stone, #8a7f72); margin-right: 6px;
+}
+.fac-chip {
+  border: 1px solid var(--cream-dark, #e8e0d4); background: transparent;
+  color: var(--charcoal, #2c2825); font-family: inherit; font-size: 13px;
+  padding: 7px 16px; border-radius: 20px; cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.fac-chip:hover { border-color: var(--terracotta, #a0522d); }
+.fac-chip--active { background: var(--terracotta, #a0522d); border-color: var(--terracotta, #a0522d); color: #fff; }
+
+.fac-groups { display: grid; grid-template-columns: 5fr 8fr; gap: 48px; }
+.fac-group__title {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 500;
+  color: var(--charcoal, #2c2825); margin-bottom: 20px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--cream-dark, #e8e0d4);
+}
+.fac-group:first-child .fac-grid { grid-template-columns: 1fr; }
+.fac-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 24px; }
+
+.fac-tile {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px 4px; transition: opacity 0.25s ease;
+}
+.fac-tile--dim { opacity: 0.28; }
+.fac-tile__icon {
+  flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--cream, #f4ede3); color: var(--terracotta, #a0522d);
+}
+.fac-tile__name {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--charcoal, #2c2825); margin: 4px 0 6px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.fac-tile__badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: none;
+  color: var(--terracotta, #a0522d); background: rgba(160, 82, 45, 0.1);
+  padding: 2px 8px; border-radius: 10px;
+}
+.fac-tile__desc { font-size: 13px; line-height: 1.6; color: var(--stone, #8a7f72); }
+
+@media (max-width: 1000px) {
+  .fac-groups { grid-template-columns: 1fr; gap: 32px; }
+  .fac-group:first-child .fac-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .fac-grid, .fac-group:first-child .fac-grid { grid-template-columns: 1fr; }
+  .fac-filters { margin-top: -8px; }
+}

@@ -151,7 +151,7 @@ async function appendToSheet(data) {
     data.checkIn  || '—',                                          // E: Check-in Date
     data.checkOut || '—',                                          // F: Check-out Date
     formatGuests(data.adults, data.children, data.guests),         // G: Guests
-    specialRequests,                                               // H: Special Requests
+    [data.stayType === 'floor' ? 'Booking: One floor' : '', specialRequests === '—' ? '' : specialRequests].filter(Boolean).join(' · ') || '—', // H: Special Requests (+ booking type)
     message,                                                       // I: Message
     `${data.source || 'granciare.com'}${data.ref ? ' · ' + data.ref : ''}`, // J: Source + reference
   ];
@@ -215,6 +215,10 @@ async function sendNotificationEmail(data) {
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Guests</td>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${guestDisplay}</td>
           </tr>
+          <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Booking</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; font-weight: 600;">${esc(data.stayTypeLabel)}</td>
+          </tr>
           ${data.specialRequests ? `
           <tr>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; vertical-align: top;">Special Requests</td>
@@ -239,7 +243,7 @@ async function sendNotificationEmail(data) {
   await transporter.sendMail({
     from:    `"Granciare Estate" <${process.env.GMAIL_USER}>`,
     to:      process.env.NOTIFY_EMAIL,
-    subject: `New enquiry from ${data.name}${data.ref ? ` (${data.ref})` : ''} — Granciare Estate`,
+    subject: `New enquiry from ${data.name}${data.ref ? ` (${data.ref})` : ''} | Granciare Estate`,
     html,
   });
 }
@@ -259,13 +263,14 @@ async function sendGuestAcknowledgement(data) {
           ${data.ref ? `<tr><td style="padding: 8px 0; color: #8a7f72; width: 140px;">Reference</td><td style="padding: 8px 0; font-weight: 600;">${esc(data.ref)}</td></tr>` : ''}
           <tr><td style="padding: 8px 0; color: #8a7f72;">Dates</td><td style="padding: 8px 0;">${esc(data.checkIn)} → ${esc(data.checkOut)} (${nights} nights)</td></tr>
           <tr><td style="padding: 8px 0; color: #8a7f72;">Guests</td><td style="padding: 8px 0;">${esc(formatGuests(data.adults, data.children))}</td></tr>
+          <tr><td style="padding: 8px 0; color: #8a7f72;">Booking</td><td style="padding: 8px 0;">${esc(data.stayTypeLabel)}</td></tr>
           ${data.specialRequests ? `<tr><td style="padding: 8px 0; color: #8a7f72;">Requests</td><td style="padding: 8px 0;">${esc(data.specialRequests)}</td></tr>` : ''}
         </table>
         <p>This is not yet a confirmed booking. If you have any questions, reply to this email or message us on WhatsApp: +39 352 0730769.</p>
         <p>Warm regards,<br/>The Granciare team</p>
       </div>
     </div>`;
-  return sendMail(data.email, `We've received your enquiry${data.ref ? ` (${data.ref})` : ''} — Granciare Estate`, html);
+  return sendMail(data.email, `We've received your enquiry${data.ref ? ` (${data.ref})` : ''} | Granciare Estate`, html);
 }
 
 // ── Main handler ──────────────────────────────────────────────
@@ -275,7 +280,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, email, phone, checkIn, checkOut, adults, children, guests, specialRequests, message, source } = req.body || {};
+  const { name, email, phone, checkIn, checkOut, adults, children, guests, specialRequests, message, source, bookingType } = req.body || {};
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
@@ -304,6 +309,22 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Please choose between 1 and 16 guests, with at least one adult.' });
   }
 
+  // Partial ("one floor") bookings: only when switched on in Admin > Granciare Details, and up to 8 guests
+  let stayType = 'entire';
+  if (bookingType === 'floor') {
+    const sbCfg = getServerClient();
+    const { data: cfgRow } = sbCfg
+      ? await sbCfg.from('site_config').select('value').eq('key', 'allow_partial_bookings').maybeSingle()
+      : { data: null };
+    if (String(cfgRow?.value || '').toLowerCase() === 'yes') {
+      if (totalGuests > 8) {
+        return res.status(400).json({ error: 'Partial bookings can only accommodate up to 8 guests.' });
+      }
+      stayType = 'floor';
+    }
+  }
+  const stayTypeLabel = stayType === 'floor' ? 'One floor' : 'Entire villa';
+
   const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'NOTIFY_EMAIL'];
   const missingEnv  = requiredEnv.filter(k => !process.env[k]);
   if (missingEnv.length > 0) {
@@ -323,6 +344,8 @@ export default async function handler(req, res) {
     specialRequests, // string (new format) or undefined (old format)
     message:         String(message || '').slice(0, 3000),
     source:          source  || 'granciare.com',
+    stayType,
+    stayTypeLabel,
   };
 
   // ── Write to Supabase stay_requests (what the admin panel reads) ──
@@ -343,10 +366,16 @@ export default async function handler(req, res) {
       special_requests: data.specialRequests || null,
       status:           'enquiry',
     };
+    // Booking type goes in its own column; if that column doesn't exist yet, it is noted in special requests
+    const withType = { ...base, booking_type: data.stayType };
+    const typeInRequests = { ...base, special_requests: [data.stayType === 'floor' ? 'Booking: One floor' : '', data.specialRequests].filter(Boolean).join(' · ') || null };
+    const tryInsert = async (row, noteCol) => sb.from('stay_requests').insert({ ...row, [noteCol]: data.message || null }).select('id').single();
     // The guest's free-text note lives in `message` (older schema: `notes`).
-    let { data: row, error: sbErr } = await sb.from('stay_requests').insert({ ...base, message: data.message || null }).select('id').single();
+    let { data: row, error: sbErr } = await tryInsert(withType, 'message');
+    if (sbErr && /booking_type/i.test(sbErr.message || '')) ({ data: row, error: sbErr } = await tryInsert(typeInRequests, 'message'));
     if (sbErr && /message/i.test(sbErr.message || '')) {
-      ({ data: row, error: sbErr } = await sb.from('stay_requests').insert({ ...base, notes: data.message || null }).select('id').single());
+      ({ data: row, error: sbErr } = await tryInsert(withType, 'notes'));
+      if (sbErr && /booking_type/i.test(sbErr.message || '')) ({ data: row, error: sbErr } = await tryInsert(typeInRequests, 'notes'));
     }
     if (sbErr) {
       console.error('stay_requests insert error:', sbErr.message, hasServiceKey ? '' : '(no service key set — insert ran with the anon key)');
@@ -356,7 +385,7 @@ export default async function handler(req, res) {
     data.ref = 'GRC-' + String(row.id).replace(/-/g, '').slice(0, 6).toUpperCase();
     await notify(sb, {
       type: 'stay_request', title: 'New stay enquiry',
-      body: `${data.ref} · ${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'}`,
+      body: `${data.ref} · ${data.name} · ${data.checkIn || '—'} → ${data.checkOut || '—'} · ${data.stayTypeLabel}`,
       related_id: row.id,
     });
     return data.ref;

@@ -39,7 +39,7 @@ export function PrivacyPolicy() {
       </ul>
 
       <h2>Why we use it</h2>
-      <p>To answer your enquiry, arrange and confirm your stay or order, deliver your oil, and — only if you asked — tell you about Poderetto or a new harvest. The legal bases are taking steps at your request before a contract, performing the contract, and your consent for mailing lists.</p>
+      <p>To answer your enquiry, arrange and confirm your stay or order, deliver your oil, and, only if you asked, tell you about Poderetto or a new harvest. The legal bases are taking steps at your request before a contract, performing the contract, and your consent for mailing lists.</p>
 
       <h2>Who processes it</h2>
       <p>Your data is stored with service providers that act on our behalf: Supabase (database), Google (Gmail and Google Sheets), and Vercel (website hosting). Bookings confirmed in our system appear in our calendar feed only as "Booked", without your name or details. We do not sell your data.</p>
@@ -72,7 +72,7 @@ export function TermsConditions() {
 
       <h2>Solivé orders</h2>
       <ul>
-        <li>The minimum order is 5 bottles. Shipping costs and delivery times depend on the destination and are confirmed with your order.</li>
+        <li>Solivé comes in 250 ml, 500 ml and 5 L bottles. Orders of 250 ml and 500 ml bottles are limited to 3 L in total; 5 L bottles are limited to 10 per order and ship only to Europe and the USA. Shipping costs and delivery times depend on the destination and are confirmed with your order.</li>
         <li>Please check your bottles on delivery and tell us within 7 days if anything arrived damaged.</li>
         <li>EU consumers keep their statutory rights, including the right of withdrawal where it applies to food products.</li>
       </ul>

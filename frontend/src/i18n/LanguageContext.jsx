@@ -8,6 +8,7 @@ export const LANGUAGES = [
   { code: 'fr', label: 'Français',   flag: '🇫🇷' },
   { code: 'pt', label: 'Português',  flag: '🇵🇹' },
   { code: 'cs', label: 'Čeština',    flag: '🇨🇿' },
+  { code: 'ru', label: 'Русский',    flag: '🇷🇺' },
 ];
 
 const LanguageContext = createContext(null);

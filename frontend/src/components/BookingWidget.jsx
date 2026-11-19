@@ -6,9 +6,9 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { isValidPhone } from '../lib/validation';
 
-const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ' };
+const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ', ru: 'ru-RU' };
 const DEFAULT_TAGS = [
-  'Private Chef', 'Horse Riding', 'Cycling', 'Regular Cleaning',
+  'Private Chef', 'Truffle Hunting', 'Regular Cleaning',
   'Wine Tasting', 'Olive Oil Tour', 'Airport Transfer', 'Yoga Sessions',
 ];
 const DEFAULT_SELECTED = ['Olive Oil Tour'];
@@ -28,8 +28,9 @@ export default function BookingWidget({ variant = 'light' }) {
   const [tags, setTags] = useState(DEFAULT_SELECTED);
   // Tag list and pre-selected tags are managed in Admin > Granciare Details
   useEffect(() => {
-    supabase.from('site_config').select('key,value').in('key', ['booking_tags', 'booking_default_tags']).then(({ data }) => {
+    supabase.from('site_config').select('key,value').in('key', ['booking_tags', 'booking_default_tags', 'allow_partial_bookings']).then(({ data }) => {
       const cfg = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+      setPartialAllowed(String(cfg.allow_partial_bookings || '').toLowerCase() === 'yes');
       const list = parseList(cfg.booking_tags);
       const defs = parseList(cfg.booking_default_tags);
       if (list && list.length) setSuggestedTags(list);
@@ -39,8 +40,19 @@ export default function BookingWidget({ variant = 'light' }) {
   const [tagInput, setTagInput] = useState('');
 
   const MAX_GUESTS = 16;
+  const FLOOR_MAX_GUESTS = 8;
   const guestTotal = form.adults + form.children;
   const guestOverLimit = guestTotal > MAX_GUESTS;
+
+  // "Book a floor / Book entire villa" — shown only when Admin > Granciare Details allows partial bookings
+  const [partialAllowed, setPartialAllowed] = useState(false);
+  const [bookingType, setBookingType] = useState('entire');   // 'entire' | 'floor'
+  const isFloor = partialAllowed && bookingType === 'floor';
+  const floorOverLimit = isFloor && guestTotal > FLOOR_MAX_GUESTS;
+  // More than 8 guests switches to the entire villa; the guest can still pick a floor, which then shows an error
+  useEffect(() => {
+    if (guestTotal > FLOOR_MAX_GUESTS) setBookingType('entire');
+  }, [guestTotal]);
 
 
 
@@ -130,6 +142,10 @@ export default function BookingWidget({ variant = 'light' }) {
       setError(t('bk.errPhone'));
       return;
     }
+    if (floorOverLimit) {
+      setError(t('bk.floorMax', { max: FLOOR_MAX_GUESTS }));
+      return;
+    }
     if (!tcAccepted) {
       setTcError(true);
       return;
@@ -168,7 +184,8 @@ export default function BookingWidget({ variant = 'light' }) {
           children: form.children,
           specialRequests: tags.length > 0 ? tags.join(', ') : '',
           message: form.notes || '',
-          source: 'granciare.com — Booking Form',
+          source: 'granciare.com · Booking Form',
+          bookingType: partialAllowed ? bookingType : 'entire',
         }),
       });
 
@@ -247,6 +264,12 @@ export default function BookingWidget({ variant = 'light' }) {
               <span className="booking-confirm__label">{t('booking.confirmNights')}</span>
               <span className="booking-confirm__value">{nights} {nights === 1 ? t('booking.night') : t('booking.nights')}</span>
             </div>
+            {partialAllowed && (
+              <div className="booking-confirm__row">
+                <span className="booking-confirm__label">{t('bk.bookingLabel')}</span>
+                <span className="booking-confirm__value">{bookingType === 'floor' ? t('bk.bookFloor') : t('bk.bookEntire')}</span>
+              </div>
+            )}
             <div className="booking-confirm__row">
               <span className="booking-confirm__label">{t('common.guests')}</span>
               <span className="booking-confirm__value">{form.adults === 1 ? t('bk.adult1') : t('bk.adultN', { n: form.adults })}{form.children > 0 ? `, ${form.children === 1 ? t('bk.child1') : t('bk.childN', { n: form.children })}` : ''}</span>
@@ -280,6 +303,7 @@ export default function BookingWidget({ variant = 'light' }) {
                 setDates({ checkIn: '', checkOut: '' });
                 setForm({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
                 setGuestRaw({ adults: '2', children: '0' });
+                setBookingType('entire');
               }}
             >{t('booking.newEnquiry')}</button>
             <a href="https://wa.me/393520730769" className="btn btn-primary" target="_blank" rel="noreferrer">{t('booking.whatsappUs')}</a>
@@ -308,7 +332,7 @@ export default function BookingWidget({ variant = 'light' }) {
           {dateError ? (
             <p className="form-hint form-hint--error">{dateError}</p>
           ) : (
-            <p className="form-hint">{t('booking.minMaxHint', { min: MIN_NIGHTS, max: MAX_NIGHTS })}</p>
+            <p className="form-hint">{isFloor ? t('bk.minMaxShort', { min: MIN_NIGHTS, max: MAX_NIGHTS }) : t('booking.minMaxHint', { min: MIN_NIGHTS, max: MAX_NIGHTS })}</p>
           )}
         </div>
 
@@ -361,7 +385,37 @@ export default function BookingWidget({ variant = 'light' }) {
         </div>
 
         {/* Pricing Estimator — appears once dates are selected */}
+        {partialAllowed && (
+          <div className="form-group">
+            <label>{t('bk.bookingType')}</label>
+            <div className="booking-type" role="radiogroup" aria-label={t('bk.bookingType')}>
+              {[
+                { value: 'floor',  title: t('bk.bookFloor'),  sub: t('bk.bookFloorSub', { max: FLOOR_MAX_GUESTS }) },
+                { value: 'entire', title: t('bk.bookEntire'), sub: t('bk.bookEntireSub', { max: MAX_GUESTS }) },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={bookingType === opt.value}
+                  className={`booking-type__opt${bookingType === opt.value ? ' booking-type__opt--active' : ''}`}
+                  onClick={() => { setBookingType(opt.value); setError(''); }}
+                >
+                  <span className="booking-type__title">{opt.title}</span>
+                  <span className="booking-type__sub">{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+            {floorOverLimit && (
+              <p className="form-hint form-hint--error" role="alert" style={{ marginTop: '8px' }}>
+                {t('bk.floorMax', { max: FLOOR_MAX_GUESTS })}
+              </p>
+            )}
+          </div>
+        )}
+
         <PricingEstimator
+          floor={isFloor}
           checkIn={dates.checkIn}
           checkOut={dates.checkOut}
         />
@@ -467,7 +521,7 @@ export default function BookingWidget({ variant = 'light' }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading || guestOverLimit}>
+        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading || guestOverLimit || floorOverLimit}>
           {loading ? loadingMsg : t('common.sendEnquiry')}
           {!loading && (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

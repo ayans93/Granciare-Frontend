@@ -7,7 +7,7 @@ import { getServerClient } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
 import { sendToEstate, escapeHtml } from './_lib/mail.js';
 
-const KINDS = { poderetto: 'Poderetto — registered interest', harvest: 'Solivé 2026 harvest sign-up' };
+const KINDS = { poderetto: 'Poderetto: registered interest', harvest: 'Solivé next-harvest sign-up' };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default async function handler(req, res) {

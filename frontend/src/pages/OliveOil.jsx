@@ -3,35 +3,9 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { submitLead } from '../lib/leads';
 import { isValidPhone } from '../lib/validation';
+import { BOTTLE_SIZES, sizeById, checkOrder, formatVolume } from '../lib/oilRules';
+import { COUNTRY_CODES, guessCountry, countryName, FIVE_L_SERVICEABLE } from '../lib/countries';
 import './OliveOil.css';
-
-// Fallback prices if Supabase hasn't loaded yet
-const DEFAULT_QTY_TIERS = [
-  { qty: 5,   label: '5 bottles',   perBottle: 32,    total: 160,  save: null },
-  { qty: 12,  label: '12 bottles',  perBottle: 29.50, total: 354,  save: 'Save 8%' },
-  { qty: 24,  label: '24 bottles',  perBottle: 28,    total: 672,  save: 'Save 13%' },
-  { qty: 48,  label: '48 bottles',  perBottle: 26,    total: 1248, save: 'Save 19%' },
-  { qty: 100, label: '100 bottles', perBottle: 24,    total: 2400, save: 'Save 25%' },
-];
-
-// Smallest order we accept (shipping case). Tiers below this are reference prices only.
-const MIN_BOTTLES = 5;
-const MAX_BOTTLES = 9999;
-
-function buildTiers(rows) {
-  if (!rows || rows.length === 0) return DEFAULT_QTY_TIERS;
-  const sorted = [...rows].sort((a, b) => a.quantity - b.quantity);
-  const basePrice = sorted[0].price_per_bottle;
-  return sorted.map(r => ({
-    qty:        r.quantity,
-    label:      `${r.quantity} bottle${r.quantity > 1 ? 's' : ''}`,
-    perBottle:  r.price_per_bottle,
-    total:      Math.round(r.quantity * r.price_per_bottle * 100) / 100,
-    save:       r.price_per_bottle < basePrice
-                  ? `Save ${Math.round((1 - r.price_per_bottle / basePrice) * 100)}%`
-                  : null,
-  }));
-}
 
 const GALLERY_IMGS = [
   { src: '/images/olive-oil/solivé-bottle-500ml.png',             alt: 'Solivé 500ml bottle' },
@@ -49,7 +23,7 @@ const CERT_LOGOS = [
 ];
 
 export default function OliveOil() {
-  const { t, ta } = useTranslation();
+  const { t, ta, lang } = useTranslation();
   const steps     = ta('oliveOil.steps');
   const pairings  = ta('olv.pairings');
   const storageTips = ta('olv.storage');
@@ -57,48 +31,74 @@ export default function OliveOil() {
   const takeaways = ta('oliveOil.takeaways');
 
   // Order form
-  const [form, setForm]           = useState({ name: '', phone: '', email: '', address: '', message: '' });
+  const [form, setForm]           = useState({ name: '', phone: '', email: '', address: '', country: '', message: '' });
+  // Country: guessed from the delivery address until the customer picks one themselves
+  const [countryTouched, setCountryTouched] = useState(false);
+  const [countryGuessed, setCountryGuessed] = useState(false);
+  const onAddressChange = e => {
+    const address = e.target.value;
+    setForm(f => {
+      if (countryTouched) return { ...f, address };
+      const guess = guessCountry(address);
+      setCountryGuessed(Boolean(guess));
+      return { ...f, address, country: guess || (countryGuessed ? '' : f.country) };
+    });
+  };
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
   const submittingRef = useRef(false);
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Dynamic pricing from Supabase
-  const [qtyTiers, setQtyTiers] = useState(DEFAULT_QTY_TIERS);
+  // Bottle size + quantity, shared by the selector above and the order form below.
+  // 250 ml / 500 ml: 3 L per order at most. 5 L: custom quantity, up to 10.
+  const [sizePrices, setSizePrices] = useState({});
   useEffect(() => {
-    supabase.from('oil_pricing').select('*').order('quantity').then(({ data }) => {
-      if (data && data.length > 0) setQtyTiers(buildTiers(data));
+    Promise.all([
+      supabase.from('site_config').select('key,value').in('key', BOTTLE_SIZES.map(z => z.priceKey)),
+      supabase.from('oil_pricing').select('quantity,price_per_bottle').eq('quantity', 5),
+    ]).then(([cfg, legacy]) => {
+      const map = {};
+      (cfg.data || []).forEach(r => { const v = parseFloat(r.value); if (v > 0) map[r.key] = v; });
+      // Until 500 ml has its own price, use the old 5-bottle price
+      if (!map.oil_price_500ml && legacy.data?.[0]?.price_per_bottle > 0) map.oil_price_500ml = Number(legacy.data[0].price_per_bottle);
+      setSizePrices(map);
     });
   }, []);
 
-  // Quantity — one selection shared by the tiles above and the order form below
-  const orderTiers = qtyTiers.filter(t => t.qty >= MIN_BOTTLES);
-  // "Save %" is measured against the smallest orderable tier
-  const basePrice = orderTiers.length ? orderTiers[0].perBottle : 0;
-  const minPrice = orderTiers.length ? Math.min(...orderTiers.map(x => x.perBottle)) : null;
-  const [selection, setSelection] = useState(MIN_BOTTLES);   // a tier quantity, or 'custom'
+  const [bottleSize, setBottleSize] = useState('500ml');
+  const size = sizeById(bottleSize);
+  const [selection, setSelection] = useState(6);   // a preset quantity, or 'custom'
   const [customQty, setCustomQty] = useState('');
-  const isCustom = selection === 'custom';
-  useEffect(() => {
-    if (!isCustom && orderTiers.length && !orderTiers.some(t => t.qty === selection)) setSelection(orderTiers[0].qty);
-  }, [qtyTiers]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [showFiveLNotice, setShowFiveLNotice] = useState(false);
+  const isCustom = selection === 'custom' || size.presets.length === 0;
+
+  const chooseSize = id => {
+    const next = sizeById(id);
+    setBottleSize(id);
+    setError('');
+    if (!next.presets.length) setSelection('custom');
+    else if (selection !== 'custom' && !next.presets.includes(selection)) setSelection(next.presets[0]);
+    if (next.shippingNotice) setShowFiveLNotice(true);
+  };
+  const chooseQty = v => { setSelection(v === 'custom' ? 'custom' : Number(v)); setError(''); };
 
   const customNum = Number(customQty);
-  const customValid = customQty !== '' && Number.isInteger(customNum) && customNum >= MIN_BOTTLES && customNum <= MAX_BOTTLES;
-  const selectedQty = isCustom ? (customValid ? customNum : null) : selection;
+  const rawQty = isCustom ? (customQty === '' ? null : customNum) : selection;
+  const qtyIssue = rawQty == null ? '' : checkOrder(bottleSize, rawQty);
+  const selectedQty = rawQty != null && !qtyIssue ? rawQty : null;
+  const qtyErrorText = qtyIssue === 'maxVolume' ? t('olv.errMaxVolume', { max: size.maxQty })
+    : qtyIssue === 'max5l' ? t('olv.errMax5l', { max: size.maxQty })
+    : qtyIssue ? t('olv.customError', { min: 1, max: size.maxQty }) : '';
 
-  // Price for any quantity: the per-bottle rate of the largest tier it reaches
-  const priceFor = q => {
-    if (!q) return null;
-    const reached = orderTiers.filter(t => t.qty <= q);
-    const tierRow = reached[reached.length - 1];
-    if (!tierRow) return null;
-    const save = tierRow.perBottle < basePrice ? Math.round((1 - tierRow.perBottle / basePrice) * 100) : null;
-    return { perBottle: tierRow.perBottle, total: Math.round(q * tierRow.perBottle * 100) / 100, save };
-  };
-  const price = priceFor(selectedQty);
-  const chooseQty = v => { setSelection(v === 'custom' ? 'custom' : Number(v)); setError(''); };
+  const perBottle = sizePrices[size.priceKey] || null;
+  const price = selectedQty && perBottle ? { perBottle, total: Math.round(selectedQty * perBottle * 100) / 100 } : null;
+  // 5 L bottles ship only to Europe and the USA
+  const notServiceable = Boolean(size.shippingNotice && form.country && !FIVE_L_SERVICEABLE(form.country));
+  const countryOptions = COUNTRY_CODES.map(code => ({ code, name: countryName(code, lang) })).sort((a, b) => a.name.localeCompare(b.name, lang));
+
+  const knownPrices = BOTTLE_SIZES.map(z => sizePrices[z.priceKey]).filter(Boolean);
+  const minPrice = knownPrices.length ? Math.min(...knownPrices) : null;
 
   // Product interactions
   const [galleryIdx, setGalleryIdx]         = useState(0);
@@ -125,7 +125,7 @@ export default function OliveOil() {
   // Site config: Solivé stats
   const [soliveStats, setSoliveStats] = useState({
     solive_acidity: '< 0.2%', solive_polyphenols: '487',
-    solive_harvest_year: '2025', solive_cultivar: 'Moraiolo',
+    solive_harvest_year: '2026-2027', solive_cultivar: 'Moraiolo',
   });
   useEffect(() => {
     const keys = ['solive_acidity','solive_polyphenols','solive_harvest_year','solive_cultivar'];
@@ -138,8 +138,13 @@ export default function OliveOil() {
     });
   }, []);
 
-  const harvestYear = String(soliveStats.solive_harvest_year || '').trim() || '2025';
-  const nextHarvest = /^\d{4}$/.test(harvestYear) ? Number(harvestYear) + 1 : '';
+  // Harvest season, e.g. "2026-2027" (a single year like "2026" also works)
+  const harvestYear = String(soliveStats.solive_harvest_year || '').trim() || '2026-2027';
+  const nextHarvest = (() => {
+    const m = harvestYear.match(/^(\d{4})\s*[-–]\s*(\d{4})$/);
+    if (m) return `${Number(m[1]) + 1}-${Number(m[2]) + 1}`;
+    return /^\d{4}$/.test(harvestYear) ? Number(harvestYear) + 1 : '';
+  })();
 
   // Sticky CTA
   const [showSticky, setShowSticky] = useState(false);
@@ -158,18 +163,20 @@ export default function OliveOil() {
     if (submittingRef.current) return;           // ignore double clicks
     setError('');
     if (!selectedQty) {
-      setError(t('olv.errQty', { min: MIN_BOTTLES, max: MAX_BOTTLES }));
+      setError(qtyErrorText || t('olv.customError', { min: 1, max: size.maxQty }));
       return;
     }
     if (!form.name.trim()) { setError(t('bk.errName')); return; }
     if (!isValidPhone(form.phone)) { setError(t('bk.errPhone')); return; }
+    if (!form.country) { setError(t('olv.errCountry')); return; }
+    if (notServiceable) { setError(t('olv.notServiceable')); return; }
     submittingRef.current = true;
     setLoading(true);
     try {
       const res = await fetch('/api/oil-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, quantity: selectedQty }),
+        body: JSON.stringify({ ...form, quantity: selectedQty, bottleSize }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || t('booking.networkError'));
@@ -206,7 +213,6 @@ export default function OliveOil() {
             />
             <div className="hero-trust-pills">
               <span className="trust-pill">🏆 Dubai IOOC Gold 2026</span>
-              <span className="trust-pill">🌿 PDO Umbria</span>
               <a href="/images/olive-oil/solivé-dubai-gold-award-certificate.png" target="_blank" rel="noreferrer" className="trust-pill trust-pill--link">{t('olv.certificate')}</a>
             </div>
           </div>
@@ -273,7 +279,7 @@ export default function OliveOil() {
                 </div>
                 <div className="chem-divider" />
                 <div className="chem-stat">
-                  <span className="chem-val">{soliveStats.solive_harvest_year}</span>
+                  <span className="chem-val" style={harvestYear.length > 4 ? { fontSize: '15px', paddingTop: '4px' } : undefined}>{harvestYear}</span>
                   <span className="chem-key">{t('olv.harvestYear')}</span>
                 </div>
                 <div className="chem-divider" />
@@ -297,18 +303,37 @@ export default function OliveOil() {
                 </div>
               </div>
 
-              {/* Qty selector */}
+              {/* Bottle size */}
+              <div className="qty-selector">
+                <span className="qty-selector__label">{t('olv.bottleSize')}</span>
+                <div className="qty-presets">
+                  {BOTTLE_SIZES.map(z => (
+                    <button
+                      type="button"
+                      key={z.id}
+                      className={`qty-btn qty-btn--size${bottleSize === z.id ? ' qty-btn--active' : ''}`}
+                      onClick={() => chooseSize(z.id)}
+                      aria-pressed={bottleSize === z.id}
+                    >
+                      <span className="qty-btn__num">{z.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {size.shippingNotice && <p className="qty-size-note">{t('olv.fiveLNotice')}</p>}
+              </div>
+
+              {/* Quantity */}
               <div className="qty-selector">
                 <span className="qty-selector__label">{t('olv.selectQty')}</span>
                 <div className="qty-presets">
-                  {orderTiers.map(tierRow => (
+                  {size.presets.map(n => (
                     <button
                       type="button"
-                      key={tierRow.qty}
-                      className={`qty-btn${selection === tierRow.qty ? ' qty-btn--active' : ''}`}
-                      onClick={() => chooseQty(tierRow.qty)}
+                      key={n}
+                      className={`qty-btn${!isCustom && selection === n ? ' qty-btn--active' : ''}`}
+                      onClick={() => chooseQty(n)}
                     >
-                      <span className="qty-btn__num">{tierRow.qty}</span>
+                      <span className="qty-btn__num">{n}</span>
                       <span className="qty-btn__unit">{t('olv.btls')}</span>
                     </button>
                   ))}
@@ -324,35 +349,34 @@ export default function OliveOil() {
                 {isCustom && (
                   <input
                     type="number"
-                    min={MIN_BOTTLES}
-                    max={MAX_BOTTLES}
+                    min="1"
+                    max={size.maxQty}
                     step="1"
                     className="qty-custom-input"
-                    placeholder={t('olv.customPh', { min: MIN_BOTTLES })}
+                    placeholder={t('olv.customPhMax', { max: size.maxQty })}
                     value={customQty}
-                    onChange={e => setCustomQty(e.target.value)}
-                    autoFocus
+                    onChange={e => { setCustomQty(e.target.value); setError(''); }}
                   />
                 )}
-                {isCustom && customQty !== '' && !customValid && (
-                  <p className="qty-custom-error">{t('olv.customError', { min: MIN_BOTTLES, max: MAX_BOTTLES.toLocaleString() })}</p>
-                )}
+                {qtyErrorText && <p className="qty-custom-error" role="alert">{qtyErrorText}</p>}
                 <div className="qty-price">
-                  {price && (
+                  {price ? (
                     <>
                       <span className="qty-total">€{price.total.toLocaleString()}</span>
                       <span className="qty-per-bottle">€{price.perBottle.toFixed(2)} {t('olv.perBottle')}</span>
-                      {price.save && <span className="qty-saving">{t('olv.save', { n: price.save })}</span>}
                     </>
-                  )}
+                  ) : selectedQty ? (
+                    <span className="qty-per-bottle">{t('bk.priceOnRequest')}</span>
+                  ) : null}
+                  {selectedQty && <span className="qty-volume">{t('olv.totalVolume', { v: formatVolume(selectedQty * size.ml) })}</span>}
                 </div>
               </div>
 
-              {/* MOQ explainer */}
+              {/* Order limits */}
               <div className="moq-note">
                 <span className="moq-note__icon">🫒</span>
                 <p>
-                  <strong>{t('olv.moqTitle', { min: MIN_BOTTLES })}</strong> {t('olv.moqText')}
+                  <strong>{t('olv.limitTitle')}.</strong> {t('olv.limitText')}
                 </p>
               </div>
 
@@ -511,7 +535,7 @@ export default function OliveOil() {
           <div className="olive-harvest-signup__overlay" />
         </div>
         <div className="container olive-harvest-signup__content">
-          <div className="harvest-ornament">— 🫒 —</div>
+          <div className="harvest-ornament">🫒</div>
           <h2 className="harvest-title">{t('olv.harvestTitle1')}<br /><em>{t('olv.harvestTitle2', { year: nextHarvest })}</em></h2>
           <p className="harvest-sub">{t('olv.harvestSub')}</p>
           {harvestDone ? (
@@ -592,34 +616,63 @@ export default function OliveOil() {
                     <input type="email" name="email" value={form.email} onChange={handle} placeholder="your@email.com" required />
                   </div>
                   <div className="form-group">
+                    <label>{t('olv.bottleSize')}</label>
+                    <select name="bottleSize" value={bottleSize} onChange={e => chooseSize(e.target.value)}>
+                      {BOTTLE_SIZES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="olive-form__row">
+                  <div className="form-group">
                     <label>{t('oliveOil.numberOfBottles')}</label>
-                    <select name="bottles" value={String(selection)} onChange={e => chooseQty(e.target.value)}>
-                      {orderTiers.map(tierRow => <option key={tierRow.qty} value={tierRow.qty}>{t('olv.bottlesOpt', { n: tierRow.qty })}</option>)}
+                    <select name="bottles" value={isCustom ? 'custom' : String(selection)} onChange={e => chooseQty(e.target.value)}>
+                      {size.presets.map(n => <option key={n} value={n}>{t('olv.bottlesOpt', { n })}</option>)}
                       <option value="custom">{t('olv.customOpt')}</option>
                     </select>
                     {isCustom && (
                       <input
                         type="number"
-                        min={MIN_BOTTLES}
-                        max={MAX_BOTTLES}
+                        min="1"
+                        max={size.maxQty}
                         step="1"
                         value={customQty}
-                        onChange={e => setCustomQty(e.target.value)}
-                        placeholder={t('olv.customPh', { min: MIN_BOTTLES })}
+                        onChange={e => { setCustomQty(e.target.value); setError(''); }}
+                        placeholder={t('olv.customPhMax', { max: size.maxQty })}
                         required
                         style={{ marginTop: '10px' }}
                       />
                     )}
+                    {qtyErrorText && <p className="form-hint form-hint--error" style={{ marginTop: '8px' }}>{qtyErrorText}</p>}
                     {price && (
                       <p className="form-hint" style={{ marginTop: '8px' }}>
-                        {t('olv.summary', { n: selectedQty, per: price.perBottle.toFixed(2), total: price.total.toLocaleString() })}
+                        {t('olv.summarySize', { n: selectedQty, size: size.label, per: price.perBottle.toFixed(2), total: price.total.toLocaleString() })}
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>{t('oliveOil.deliveryAddress')}</label>
-                  <input type="text" name="address" value={form.address} onChange={handle} placeholder={t('olv.addressPh')} required />
+                <div className="olive-form__row olive-form__row--address">
+                  <div className="form-group">
+                    <label>{t('oliveOil.deliveryAddress')}</label>
+                    <input type="text" name="address" value={form.address} onChange={onAddressChange} placeholder={t('olv.addressPhNoCountry')} autoComplete="street-address" required />
+                  </div>
+                  <div className="form-group">
+                    <label>{t('olv.country')}</label>
+                    <select
+                      name="country"
+                      value={form.country}
+                      onChange={e => { setCountryTouched(true); setCountryGuessed(false); setForm(f => ({ ...f, country: e.target.value })); setError(''); }}
+                      className={notServiceable ? 'input--error' : undefined}
+                      autoComplete="country"
+                      required
+                    >
+                      <option value="">{t('olv.selectCountry')}</option>
+                      {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                    </select>
+                    {countryGuessed && !countryTouched && form.country && !notServiceable && (
+                      <p className="form-hint" style={{ marginTop: '6px' }}>{t('olv.countryDetected')}</p>
+                    )}
+                    {notServiceable && <p className="form-hint form-hint--error" role="alert" style={{ marginTop: '6px' }}>{t('olv.notServiceable')}</p>}
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>{t('common.message')}</label>
@@ -630,7 +683,7 @@ export default function OliveOil() {
                     {error}
                   </div>
                 )}
-                <button type="submit" className="btn btn-primary" disabled={loading || !selectedQty}>
+                <button type="submit" className="btn btn-primary" disabled={loading || !selectedQty || notServiceable}>
                   {loading ? t('common.sending') : t('common.sendEnquiry')}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -646,12 +699,23 @@ export default function OliveOil() {
       <div className={`sticky-order${showSticky ? ' sticky-order--visible' : ''}`}>
         <div className="sticky-order__inner">
           <div className="sticky-order__info">
-            <span className="sticky-order__name">{t('olv.stickyName', { year: harvestYear })}</span>
-            {minPrice != null && <span className="sticky-order__price">{t('olv.stickyPrice', { price: minPrice % 1 ? minPrice.toFixed(2) : minPrice, min: MIN_BOTTLES })}</span>}
+            <span className="sticky-order__name">{t('olv.stickyNameNoSize', { year: harvestYear })}</span>
+            {minPrice != null && <span className="sticky-order__price">{t('olv.stickyFrom', { price: minPrice % 1 ? minPrice.toFixed(2) : minPrice })}</span>}
           </div>
           <a href="#order" className="btn btn-gold sticky-order__btn">{t('olv.orderNow')}</a>
         </div>
       </div>
+
+      {/* ── 5 L SHIPPING NOTICE ──────────────────────────── */}
+      {showFiveLNotice && (
+        <div className="oil-notice" role="dialog" aria-modal="true" aria-labelledby="oil-notice-text" onClick={() => setShowFiveLNotice(false)}>
+          <div className="oil-notice__card" onClick={e => e.stopPropagation()}>
+            <span className="oil-notice__icon">🚚</span>
+            <p id="oil-notice-text" className="oil-notice__text">{t('olv.fiveLNotice')}</p>
+            <button type="button" className="btn btn-primary" autoFocus onClick={() => setShowFiveLNotice(false)}>{t('olv.iUnderstand')}</button>
+          </div>
+        </div>
+      )}
 
       {/* ── WHATSAPP FLOAT ───────────────────────────────── */}
       <div className="wa-float">
