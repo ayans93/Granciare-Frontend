@@ -8,10 +8,11 @@
   overflow: hidden;
 }
 .olive-hero__bg { position: absolute; inset: 0; }
-.olive-hero__bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 60%; }
+.olive-hero__bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 55%; }
 .olive-hero__overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(20,30,10,0.90) 0%, rgba(20,30,10,0.35) 55%, transparent 100%);
+  /* Lighter wash over a bright grove photo; darker only at the bottom where the text sits */
+  background: linear-gradient(to top, rgba(20,30,10,0.78) 0%, rgba(20,30,10,0.30) 45%, rgba(20,30,10,0.05) 75%);
 }
 .olive-hero__content {
   position: relative;

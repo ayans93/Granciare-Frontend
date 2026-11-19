@@ -200,7 +200,7 @@ export default function OliveOil() {
       {/* ── HERO ─────────────────────────────────────────── */}
       <section className="olive-hero" ref={heroRef}>
         <div className="olive-hero__bg">
-          <img src="/images/olive-oil/olive-oil-fresh-pressed-flow.jpeg" alt="Solivé first cold-press, Granciare estate" />
+          <img src="/images/olive-oil/olive-grove-autumn.jpeg" alt="Olive grove at Granciare estate, Umbria" />
           <div className="olive-hero__overlay" />
         </div>
         <div className="olive-hero__content container">
