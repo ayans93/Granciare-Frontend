@@ -88,7 +88,7 @@ const extra = {
     delivery:     L('Delivery', 'Consegna', 'Entrega', 'Livraison', 'Entrega', 'Doručení', 'Доставка'),
     days:         L('{n} working days', '{n} giorni lavorativi', '{n} días laborables', '{n} jours ouvrés', '{n} dias úteis', '{n} pracovních dní', '{n} рабочих дней'),
     standard:     L('Standard', 'Standard', 'Estándar', 'Standard', 'Normal', 'Standard', 'Стандарт'),
-    freeOver:     L('€8 · Free over 12 bottles', '€8 · Gratis oltre 12 bottiglie', '€8 · Gratis a partir de 12 botellas', '8 € · Offert dès 12 bouteilles', '€8 · Grátis acima de 12 garrafas', '8 € · Zdarma od 12 lahví', '€8 · Бесплатно от 12 бутылок'),
+    freeOver:     L('€8', '€8', '8 €', '8 €', '8 €', '8 €', '8 €'),
     from:         L('from €{n}', 'da €{n}', 'desde €{n}', 'à partir de {n} €', 'desde €{n}', 'od {n} €', 'от €{n}'),
     shipNote:     L('All orders tracked and insured · Temperature-protected packaging', 'Tutti gli ordini tracciati e assicurati · Imballaggio a temperatura protetta', 'Todos los pedidos con seguimiento y seguro · Embalaje con protección térmica', 'Toutes les commandes suivies et assurées · Emballage isotherme', 'Todas as encomendas com seguimento e seguro · Embalagem com proteção térmica', 'Všechny zásilky sledované a pojištěné · Tepelně chráněné balení', 'Все заказы отслеживаются и застрахованы · Термозащитная упаковка'),
     storeLabel:   L('Storage & Care', 'Conservazione e cura', 'Conservación y cuidado', 'Conservation et entretien', 'Conservação e cuidados', 'Skladování a péče', 'Хранение и уход'),
