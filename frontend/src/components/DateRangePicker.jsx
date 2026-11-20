@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import './DateRangePicker.css';
+import { BOOKINGS_OPEN_FROM } from '../lib/bookingWindow';
 
 const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ', ru: 'ru-RU' };
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -126,8 +127,12 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
   const locale = LOCALES[lang] || 'en-GB';
   const today = startOfDay(new Date());
   const [open, setOpen] = useState(false);
-  const [viewYear,  setViewYear]  = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  // The calendar opens on the first bookable month (or today, if that is later)
+  const opensFrom = parseYMD(BOOKINGS_OPEN_FROM);
+  const firstView = opensFrom > today ? opensFrom : today;
+  const minMonthKey = firstView.getFullYear() * 12 + firstView.getMonth();
+  const [viewYear,  setViewYear]  = useState(firstView.getFullYear());
+  const [viewMonth, setViewMonth] = useState(firstView.getMonth());
   const [hoveredDate, setHoveredDate] = useState(null);
   const [bookedRanges, setBookedRanges] = useState([]);
   const [loadingRanges, setLoadingRanges] = useState(false);
@@ -176,7 +181,9 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
     }
   };
 
+  const atFirstMonth = viewYear * 12 + viewMonth <= minMonthKey;
   const prevMonth = () => {
+    if (atFirstMonth) return;
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
     else setViewMonth(m => m - 1);
   };
@@ -222,7 +229,7 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
         <div className="drp-dropdown" onMouseLeave={() => setHoveredDate(null)}>
           {/* Nav header */}
           <div className="drp-nav">
-            <button type="button" className="drp-nav__btn" onClick={prevMonth} aria-label="Previous month">
+            <button type="button" className="drp-nav__btn" onClick={prevMonth} aria-label="Previous month" disabled={atFirstMonth}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div className="drp-nav__months">

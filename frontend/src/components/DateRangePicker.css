@@ -286,3 +286,4 @@
   }
   .drp-nav__months { gap: 0; justify-content: center; flex: 1; }
 }
+.drp-nav__btn:disabled { opacity: 0.3; cursor: default; }

@@ -32,6 +32,7 @@ import nodemailer from 'nodemailer';
 import { getServerClient, hasServiceKey } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
 import { escapeHtml as esc, sendMail } from './_lib/mail.js';
+import { BOOKINGS_OPEN_FROM } from './_lib/bookingWindow.js';
 
 // ── CORS helper ───────────────────────────────────────────────
 function setCors(req, res) {
@@ -299,6 +300,9 @@ export default async function handler(req, res) {
   const YMD = /^\d{4}-\d{2}-\d{2}$/;
   if (!YMD.test(checkIn || '') || !YMD.test(checkOut || '')) {
     return res.status(400).json({ error: 'Please select your check-in and check-out dates.' });
+  }
+  if (checkIn < BOOKINGS_OPEN_FROM) {
+    return res.status(400).json({ error: 'Bookings are open from 1 April 2027. Please choose later dates.' });
   }
   const stayNights = Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86400000);
   if (!(stayNights >= 2 && stayNights <= 30)) {

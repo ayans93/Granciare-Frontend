@@ -11,10 +11,13 @@
  */
 
 import { getServerClient } from './_lib/supabase.js';
+import { BOOKINGS_OPEN_FROM } from './_lib/bookingWindow.js';
 
 // Dates blocked by the estate itself
+// Everything before BOOKINGS_OPEN_FROM is closed (check-out on that day is not needed:
+// the first possible check-in is BOOKINGS_OPEN_FROM itself).
 const STATIC_BLOCKED = [
-  { checkIn: '2026-10-01', checkOut: '2026-12-01' }, // Oct & Nov unavailable
+  { checkIn: '2026-10-01', checkOut: BOOKINGS_OPEN_FROM },
 ];
 
 function setCors(res) {
