@@ -108,7 +108,7 @@ export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
       )}
 
       <p className="pe__disclaimer">
-        {floor ? t('bk.disclaimerFloor') : t('pricing.disclaimer')}
+        {t('bk.inclTax')} · {floor ? t('bk.disclaimerFloor') : t('pricing.disclaimer')}
       </p>
     </div>
   );

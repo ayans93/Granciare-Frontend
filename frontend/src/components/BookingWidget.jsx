@@ -23,8 +23,8 @@ import './BookingWidget.css';
 export default function BookingWidget({ variant = 'light' }) {
   const { t, lang } = useTranslation();
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
-  const [form, setForm] = useState({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
-  const [guestRaw, setGuestRaw] = useState({ adults: '2', children: '0' });
+  const [form, setForm] = useState({ adults: 2, children: 0, infants: 0, name: '', email: '', phone: '', notes: '' });
+  const [guestRaw, setGuestRaw] = useState({ adults: '2', children: '0', infants: '0' });
   const [suggestedTags, setSuggestedTags] = useState(DEFAULT_TAGS);
   const [defaultTags, setDefaultTags] = useState(DEFAULT_SELECTED);
   const [tags, setTags] = useState(DEFAULT_SELECTED);
@@ -42,7 +42,9 @@ export default function BookingWidget({ variant = 'light' }) {
   const [tagInput, setTagInput] = useState('');
 
   const MAX_GUESTS = 16;
-  const FLOOR_MAX_GUESTS = 8;
+  const FLOOR_MAX_GUESTS = 6;   // adults + kids; infants are not counted
+  const MAX_INFANTS = 10;
+  // Adults and kids count towards capacity; infants (up to 3 years) do not
   const guestTotal = form.adults + form.children;
   const guestOverLimit = guestTotal > MAX_GUESTS;
 
@@ -51,7 +53,7 @@ export default function BookingWidget({ variant = 'light' }) {
   const [bookingType, setBookingType] = useState('entire');   // 'entire' | 'floor'
   const isFloor = partialAllowed && bookingType === 'floor';
   const floorOverLimit = isFloor && guestTotal > FLOOR_MAX_GUESTS;
-  // More than 8 guests switches to the entire villa; the guest can still pick a floor, which then shows an error
+  // More than 6 adults + kids switches to the entire villa; the guest can still pick a floor, which then shows an error
   useEffect(() => {
     if (guestTotal > FLOOR_MAX_GUESTS) setBookingType('entire');
   }, [guestTotal]);
@@ -72,7 +74,8 @@ export default function BookingWidget({ variant = 'light' }) {
   const adjustGuests = (field, delta) => {
     setForm(prev => {
       const min = field === 'adults' ? 1 : 0;
-      const proposed = Math.max(min, prev[field] + delta);
+      let proposed = Math.max(min, prev[field] + delta);
+      if (field === 'infants') proposed = Math.min(proposed, MAX_INFANTS);
       setGuestRaw(r => ({ ...r, [field]: String(proposed) }));
       return { ...prev, [field]: proposed };
     });
@@ -91,7 +94,8 @@ export default function BookingWidget({ variant = 'light' }) {
   const handleGuestBlur = (field) => {
     const min = field === 'adults' ? 1 : 0;
     const parsed = parseInt(guestRaw[field], 10);
-    const safe = isNaN(parsed) || parsed < min ? min : parsed;
+    let safe = isNaN(parsed) || parsed < min ? min : parsed;
+    if (field === 'infants') safe = Math.min(safe, MAX_INFANTS);
     setForm(prev => ({ ...prev, [field]: safe }));
     setGuestRaw(r => ({ ...r, [field]: String(safe) }));
   };
@@ -185,6 +189,7 @@ export default function BookingWidget({ variant = 'light' }) {
           checkOut: dates.checkOut,
           adults: form.adults,
           children: form.children,
+          infants: form.infants,
           specialRequests: tags.length > 0 ? tags.join(', ') : '',
           message: form.notes || '',
           source: 'granciare.com · Booking Form',
@@ -275,7 +280,7 @@ export default function BookingWidget({ variant = 'light' }) {
             )}
             <div className="booking-confirm__row">
               <span className="booking-confirm__label">{t('common.guests')}</span>
-              <span className="booking-confirm__value">{form.adults === 1 ? t('bk.adult1') : t('bk.adultN', { n: form.adults })}{form.children > 0 ? `, ${form.children === 1 ? t('bk.child1') : t('bk.childN', { n: form.children })}` : ''}</span>
+              <span className="booking-confirm__value">{form.adults === 1 ? t('bk.adult1') : t('bk.adultN', { n: form.adults })}{form.children > 0 ? `, ${form.children === 1 ? t('bk.child1') : t('bk.childN', { n: form.children })}` : ''}{form.infants > 0 ? `, ${form.infants === 1 ? t('bk.infant1') : t('bk.infantN', { n: form.infants })}` : ''}</span>
             </div>
             {tags.length > 0 && (
               <div className="booking-confirm__row booking-confirm__row--extras">
@@ -304,8 +309,8 @@ export default function BookingWidget({ variant = 'light' }) {
                 setTags(defaultTags);
                 setTagInput('');
                 setDates({ checkIn: '', checkOut: '' });
-                setForm({ adults: 2, children: 0, name: '', email: '', phone: '', notes: '' });
-                setGuestRaw({ adults: '2', children: '0' });
+                setForm({ adults: 2, children: 0, infants: 0, name: '', email: '', phone: '', notes: '' });
+                setGuestRaw({ adults: '2', children: '0', infants: '0' });
                 setBookingType('entire');
               }}
             >{t('booking.newEnquiry')}</button>
@@ -347,6 +352,7 @@ export default function BookingWidget({ variant = 'light' }) {
             <div className="guest-counter">
               <div className="guest-counter__label">
                 <span>{t('bk.adults')}</span>
+                <span className="guest-counter__sub">{t('bk.ageAdult')}</span>
               </div>
               <div className="guest-counter__control">
                 <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('adults', -1)} aria-label="Fewer adults">−</button>
@@ -364,7 +370,7 @@ export default function BookingWidget({ variant = 'light' }) {
             <div className="guest-counter">
               <div className="guest-counter__label">
                 <span>{t('bk.children')}</span>
-                <span className="guest-counter__sub">{t('bk.under10')}</span>
+                <span className="guest-counter__sub">{t('bk.ageKid')}</span>
               </div>
               <div className="guest-counter__control">
                 <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', -1)} aria-label="Fewer children">−</button>
@@ -377,6 +383,24 @@ export default function BookingWidget({ variant = 'light' }) {
                   onBlur={() => handleGuestBlur('children')}
                 />
                 <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', 1)} aria-label="More children">+</button>
+              </div>
+            </div>
+            <div className="guest-counter">
+              <div className="guest-counter__label">
+                <span>{t('bk.infants')}</span>
+                <span className="guest-counter__sub">{t('bk.ageInfant')}</span>
+              </div>
+              <div className="guest-counter__control">
+                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('infants', -1)} aria-label="Fewer infants">−</button>
+                <input
+                  type="number"
+                  className="guest-counter__input"
+                  value={guestRaw.infants}
+                  min="0" max={MAX_INFANTS}
+                  onChange={e => handleGuestChange('infants', e.target.value)}
+                  onBlur={() => handleGuestBlur('infants')}
+                />
+                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('infants', 1)} aria-label="More infants" disabled={form.infants >= MAX_INFANTS}>+</button>
               </div>
             </div>
           </div>

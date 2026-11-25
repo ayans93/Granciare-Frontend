@@ -417,13 +417,14 @@ export default function Granciare() {
                     <span className="contact-option__value">{t('home.fastest')}</span>
                   </div>
                 </a>
-                <a href="mailto:info@granciare.com" className="contact-option">
+                <div className="contact-option">
                   <span className="contact-option__icon">✉</span>
                   <div>
                     <span className="contact-option__label">{t('home.email')}</span>
-                    <span className="contact-option__value">info@granciare.com</span>
+                    <a href="mailto:info@granciare.com" className="contact-option__value">info@granciare.com</a>
+                    <a href="mailto:enquiry@granciare.com" className="contact-option__value">enquiry@granciare.com</a>
                   </div>
-                </a>
+                </div>
                 <a href="tel:+390763630996" className="contact-option">
                   <span className="contact-option__icon">☎</span>
                   <div>

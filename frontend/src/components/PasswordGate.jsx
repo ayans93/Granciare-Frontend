@@ -111,7 +111,8 @@ export default function PasswordGate({ onAuth }) {
 
         <p className="gate__footer">
           Need access? Contact&nbsp;
-          <a href="mailto:info@granciare.com">info@granciare.com</a>
+          <a href="mailto:info@granciare.com">info@granciare.com</a> or{' '}
+          <a href="mailto:enquiry@granciare.com">enquiry@granciare.com</a>
         </p>
       </div>
     </div>

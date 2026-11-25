@@ -54,6 +54,9 @@ export default function Footer() {
                   <a href="mailto:info@granciare.com">info@granciare.com</a>
                 </li>
                 <li>
+                  <a href="mailto:enquiry@granciare.com">enquiry@granciare.com</a>
+                </li>
+                <li>
                   <a href="tel:+390763630996">+39 0763 630996</a>
                 </li>
                 <li>

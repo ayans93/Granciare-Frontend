@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { submitLead } from '../lib/leads';
@@ -125,13 +125,11 @@ export default function OliveOil() {
     }
   };
 
-  // Site config: Solivé stats
-  const [soliveStats, setSoliveStats] = useState({
-    solive_acidity: '< 0.2%', solive_polyphenols: '487',
-    solive_harvest_year: '2026-2027', solive_cultivar: 'Moraiolo',
-  });
+  // Site config: Solivé chemistry panel (four value + label pairs set in admin) and harvest season
+  const [soliveStats, setSoliveStats] = useState({ solive_harvest_year: '2026-2027' });
   useEffect(() => {
-    const keys = ['solive_acidity','solive_polyphenols','solive_harvest_year','solive_cultivar'];
+    const keys = ['solive_harvest_year', 'solive_acidity', 'solive_polyphenols', 'solive_cultivar',
+      ...[1, 2, 3, 4].flatMap(n => [`solive_stat${n}_value`, `solive_stat${n}_label`])];
     supabase.from('site_config').select('key,value').in('key', keys).then(({ data }) => {
       if (data && data.length) {
         const merged = {};
@@ -143,6 +141,17 @@ export default function OliveOil() {
 
   // Harvest season, e.g. "2026-2027" (a single year like "2026" also works)
   const harvestYear = String(soliveStats.solive_harvest_year || '').trim() || '2026-2027';
+  // Admin values and labels are shown as typed; older single-value settings and the
+  // translated default labels are only a fallback until Solivé Details is saved once.
+  const chemStats = [
+    [soliveStats.solive_acidity || '< 0.2%', t('olv.acidity')],
+    [soliveStats.solive_polyphenols || '487', t('olv.polyphenols')],
+    [harvestYear, t('olv.harvestYear')],
+    [soliveStats.solive_cultivar || 'Moraiolo', t('olv.cultivar')],
+  ].map(([v, l], i) => ({
+    value: String(soliveStats[`solive_stat${i + 1}_value`] || v).trim(),
+    label: String(soliveStats[`solive_stat${i + 1}_label`] || l).trim(),
+  }));
   const nextHarvest = (() => {
     const m = harvestYear.match(/^(\d{4})\s*[-–]\s*(\d{4})$/);
     if (m) return `${Number(m[1]) + 1}-${Number(m[2]) + 1}`;
@@ -273,25 +282,15 @@ export default function OliveOil() {
               <h2 className="section-title" style={{ fontSize: '32px' }}>{t('olv.harvestTitle', { year: harvestYear })}</h2>
               {/* Chemistry panel */}
               <div className="chem-panel">
-                <div className="chem-stat">
-                  <span className="chem-val">{soliveStats.solive_acidity}</span>
-                  <span className="chem-key">{t('olv.acidity')}</span>
-                </div>
-                <div className="chem-divider" />
-                <div className="chem-stat">
-                  <span className="chem-val">{soliveStats.solive_polyphenols}</span>
-                  <span className="chem-key">{t('olv.polyphenols')}</span>
-                </div>
-                <div className="chem-divider" />
-                <div className="chem-stat">
-                  <span className="chem-val" style={harvestYear.length > 4 ? { fontSize: '15px', paddingTop: '4px' } : undefined}>{harvestYear}</span>
-                  <span className="chem-key">{t('olv.harvestYear')}</span>
-                </div>
-                <div className="chem-divider" />
-                <div className="chem-stat">
-                  <span className="chem-val" style={{ fontSize: '14px', paddingTop: '4px' }}>{soliveStats.solive_cultivar}</span>
-                  <span className="chem-key">{t('olv.cultivar')}</span>
-                </div>
+                {chemStats.map((st, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <div className="chem-divider" />}
+                    <div className="chem-stat">
+                      <span className="chem-val" style={st.value.length > 6 ? { fontSize: st.value.length > 10 ? '14px' : '15px', paddingTop: '4px' } : undefined}>{st.value}</span>
+                      <span className="chem-key">{st.label}</span>
+                    </div>
+                  </Fragment>
+                ))}
               </div>
 
               {/* Tasting notes compact */}
@@ -374,6 +373,7 @@ export default function OliveOil() {
                     <span className="qty-per-bottle">{t('bk.priceOnRequest')}</span>
                   ) : null}
                   {selectedQty && <span className="qty-volume">{t('olv.totalVolume', { v: formatVolume(selectedQty * size.ml, lang) })}</span>}
+                  {price && <span className="qty-tax">{t('olv.taxShipping')}</span>}
                 </div>
               </div>
 
@@ -480,21 +480,18 @@ export default function OliveOil() {
                   <span className="ship-region">🇮🇹 {t('olv.shipEU')}</span>
                   <div className="ship-rows">
                     <div className="ship-row"><span>{t('olv.delivery')}</span><span>{t('olv.days', { n: '3–5' })}</span></div>
-                    <div className="ship-row"><span>{t('olv.standard')}</span><span>{t('olv.freeOver')}</span></div>
                   </div>
                 </div>
                 <div className="ship-card">
                   <span className="ship-region">🇬🇧 {t('olv.shipUK')}</span>
                   <div className="ship-rows">
                     <div className="ship-row"><span>{t('olv.delivery')}</span><span>{t('olv.days', { n: '5–7' })}</span></div>
-                    <div className="ship-row"><span>DHL</span><span>{t('olv.from', { n: 18 })}</span></div>
                   </div>
                 </div>
                 <div className="ship-card">
                   <span className="ship-region">🌍 {t('olv.shipWorld')}</span>
                   <div className="ship-rows">
                     <div className="ship-row"><span>{t('olv.delivery')}</span><span>{t('olv.days', { n: '7–10' })}</span></div>
-                    <div className="ship-row"><span>DHL Express</span><span>{t('olv.from', { n: 28 })}</span></div>
                   </div>
                 </div>
               </div>
@@ -714,7 +711,7 @@ export default function OliveOil() {
         <div className="sticky-order__inner">
           <div className="sticky-order__info">
             <span className="sticky-order__name">{t('olv.stickyNameNoSize', { year: harvestYear })}</span>
-            {minPrice != null && <span className="sticky-order__price">{t('olv.stickyFrom', { price: minPrice % 1 ? minPrice.toFixed(2) : minPrice })}</span>}
+            {minPrice != null && <span className="sticky-order__price">{t('olv.stickyFrom', { price: minPrice % 1 ? minPrice.toFixed(2) : minPrice })} · {t('olv.taxShipping')}</span>}
           </div>
           <a href="#order" className="btn btn-gold sticky-order__btn">{t('olv.orderNow')}</a>
         </div>

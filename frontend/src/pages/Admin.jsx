@@ -204,7 +204,7 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
         {isStay ? (
           <>
             <td>{fmt(row.check_in)} → {fmt(row.check_out)}</td>
-            <td>{nights(row.check_in, row.check_out)}n · {row.adults}A {row.children > 0 ? `${row.children}C` : ''}{row.booking_type === 'floor' && <span className="type-badge">Floor</span>}</td>
+            <td>{nights(row.check_in, row.check_out)}n · {row.adults}A {row.children > 0 ? `${row.children}K ` : ''}{row.infants > 0 ? `${row.infants}I` : ''}{row.booking_type === 'floor' && <span className="type-badge">Floor</span>}</td>
           </>
         ) : (
           <td>{row.quantity} × {oilSize(row)}</td>
@@ -223,7 +223,7 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
           <td colSpan={isStay ? 7 : 6}>
             <div className="req-detail-inner">
               {isStay && <p><strong>Reference:</strong> {stayRef(row.id)}</p>}
-              {isStay && <p><strong>Booking:</strong> {row.booking_type === 'floor' ? 'One floor (up to 8 guests)' : 'Entire villa'}</p>}
+              {isStay && <p><strong>Booking:</strong> {row.booking_type === 'floor' ? 'One floor (up to 6 adults and kids)' : 'Entire villa'}</p>}
               {row.phone && <p><strong>Phone:</strong> {row.phone}</p>}
               {(row.message || row.notes) && <p className="req-message"><strong>Message:</strong> {row.message || row.notes}</p>}
               {row.special_requests && <p><strong>Special requests:</strong> {row.special_requests}</p>}
@@ -370,7 +370,7 @@ function StayConfirmations() {
               <div className="confirm-card__body">
                 <p className="confirm-name">{r.name} <span className="confirm-ref">{stayRef(r.id)}</span></p>
                 <p className="confirm-meta">{r.email} {r.phone && `· ${r.phone}`}</p>
-                <p className="confirm-guests">{r.booking_type === 'floor' ? 'One floor · ' : 'Entire villa · '}{r.adults} adults{r.children > 0 ? `, ${r.children} children` : ''}</p>
+                <p className="confirm-guests">{r.booking_type === 'floor' ? 'One floor · ' : 'Entire villa · '}{r.adults} adults{r.children > 0 ? `, ${r.children} kids` : ''}{r.infants > 0 ? `, ${r.infants} infant${r.infants === 1 ? '' : 's'}` : ''}</p>
                 {r.special_requests && (
                   <div className="confirm-special">
                     <span>Special requests:</span> {r.special_requests}
@@ -1211,7 +1211,7 @@ function GranciareDetails() {
 
       <div className="cfg-card cfg-card--spaced">
         <h3 className="cfg-card__title">Booking form · partial bookings</h3>
-        <p className="cfg-intro">When on, guests choose "Book a floor" (up to 8 guests) or "Book entire villa" on the booking form. When off, the choice is hidden and every enquiry is for the entire villa.</p>
+        <p className="cfg-intro">When on, guests choose "Book a floor" (up to 6 adults and kids; infants not counted) or "Book entire villa" on the booking form. When off, the choice is hidden and every enquiry is for the entire villa.</p>
         <div className="cfg-toggle" role="radiogroup" aria-label="Allow partial bookings">
           <span className="cfg-label" style={{ marginBottom: 0 }}>Allow partial bookings</span>
           {['yes', 'no'].map(v => (
@@ -1253,30 +1253,37 @@ function GranciareDetails() {
 }
 
 // ── SOLIVÉ DETAILS ────────────────────────────────────────
-const SOLIVE_KEYS = ['solive_acidity', 'solive_polyphenols', 'solive_harvest_year', 'solive_cultivar']
+// Four value + label pairs shown exactly as typed in the Olive Oil chemistry panel,
+// plus the harvest season used in the product heading and the sticky order bar.
+const SOLIVE_STAT_DEFAULTS = [
+  ['< 0.2%', 'Acidity'], ['487', 'Polyphenols mg/kg'], ['2026-2027', 'Harvest Year'], ['Moraiolo', 'Cultivar'],
+]
+const SOLIVE_KEYS = ['solive_harvest_year', ...[1, 2, 3, 4].flatMap(n => [`solive_stat${n}_value`, `solive_stat${n}_label`])]
 function SoliveDetails() {
-  const [config, setConfig] = useSiteConfig({
-    solive_acidity: '< 0.2%', solive_polyphenols: '487', solive_harvest_year: '2026-2027', solive_cultivar: 'Moraiolo',
-  })
+  const defaults = { solive_harvest_year: '2026-2027' }
+  SOLIVE_STAT_DEFAULTS.forEach(([v, l], i) => { defaults[`solive_stat${i + 1}_value`] = v; defaults[`solive_stat${i + 1}_label`] = l })
+  const [config, setConfig] = useSiteConfig(defaults)
   const saver = useSaver(config)
   const set = key => v => setConfig(c => ({ ...c, [key]: v }))
   const validate = () => {
-    if (SOLIVE_KEYS.some(k => !String(config[k] || '').trim())) return 'Every field needs to be filled in.'
+    if (SOLIVE_KEYS.some(k => !String(config[k] || '').trim())) return 'Every value and label needs to be filled in.'
     if (!/^\d{4}(\s*[-–]\s*\d{4})?$/.test(String(config.solive_harvest_year).trim())) return 'Harvest year must be a year or season, e.g. 2026 or 2026-2027.'
     return ''
   }
   return (
     <div className="cfg-page">
-      <p className="cfg-intro">Edit the Solivé chemistry panel. The harvest year also updates the product heading and the sticky order bar on the Olive Oil page.</p>
+      <p className="cfg-intro">Edit the four stats in the Solivé chemistry panel. Each value and label is shown on the Olive Oil page exactly as typed.</p>
       <div className="cfg-card">
-        <h3 className="cfg-card__title">Chemistry Panel</h3>
-        <div className="cfg-grid">
-          <ConfigField label="Acidity" max={12} value={config.solive_acidity} onChange={set('solive_acidity')} hint="e.g. < 0.2%" />
-          <ConfigField label="Polyphenols mg/kg" max={8} value={config.solive_polyphenols} onChange={set('solive_polyphenols')} hint="e.g. 487" />
-          <ConfigField label="Harvest Year" max={11} value={config.solive_harvest_year} onChange={set('solive_harvest_year')} hint="e.g. 2026-2027" />
-          <ConfigField label="Cultivar" max={20} value={config.solive_cultivar} onChange={set('solive_cultivar')} hint="e.g. Moraiolo" />
-        </div>
+        <h3 className="cfg-card__title">Harvest season</h3>
+        <ConfigField label="Harvest Year" max={11} value={config.solive_harvest_year} onChange={set('solive_harvest_year')} hint="Used in the product heading and the sticky order bar, e.g. 2026-2027" />
       </div>
+      {[1, 2, 3, 4].map(n => (
+        <div key={n} className="cfg-card cfg-card--spaced">
+          <h3 className="cfg-card__title">Stat {n}</h3>
+          <ConfigField label="Value" max={20} value={config[`solive_stat${n}_value`]} onChange={set(`solive_stat${n}_value`)} hint={`e.g. ${SOLIVE_STAT_DEFAULTS[n - 1][0]}`} />
+          <ConfigField label="Label" max={24} value={config[`solive_stat${n}_label`]} onChange={set(`solive_stat${n}_label`)} hint={`e.g. ${SOLIVE_STAT_DEFAULTS[n - 1][1]}`} />
+        </div>
+      ))}
       {saver.err && <p className="form-err">{saver.err}</p>}
       <SaveButton saving={saver.saving} saved={saver.saved} onClick={() => saver.save(SOLIVE_KEYS, validate)} />
     </div>

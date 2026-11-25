@@ -28,7 +28,7 @@ export function PrivacyPolicy() {
   return (
     <LegalPage title={t('footer.privacy')}>
       <h2>Who we are</h2>
-      <p>Granciare Estate, Allerona (TR), Umbria, Italy ("we", "us") is responsible for the personal data collected through granciare.com. Contact: <a href="mailto:info@granciare.com">info@granciare.com</a>.</p>
+      <p>Granciare Estate, Allerona (TR), Umbria, Italy ("we", "us") is responsible for the personal data collected through granciare.com. Contact: <a href="mailto:info@granciare.com">info@granciare.com</a> / <a href="mailto:enquiry@granciare.com">enquiry@granciare.com</a>.</p>
 
       <h2>What we collect</h2>
       <ul>
@@ -48,7 +48,7 @@ export function PrivacyPolicy() {
       <p>Enquiries that do not lead to a booking are deleted within 24 months. Booking and order records are kept as long as Italian tax and accounting rules require. Mailing-list entries are kept until you unsubscribe.</p>
 
       <h2>Your rights</h2>
-      <p>You can ask to access, correct, delete or export your data, object to its use, or withdraw consent at any time by emailing <a href="mailto:info@granciare.com">info@granciare.com</a>. You may also complain to the Italian data protection authority (Garante per la protezione dei dati personali).</p>
+      <p>You can ask to access, correct, delete or export your data, object to its use, or withdraw consent at any time by emailing <a href="mailto:info@granciare.com">info@granciare.com</a> / <a href="mailto:enquiry@granciare.com">enquiry@granciare.com</a>. You may also complain to the Italian data protection authority (Garante per la protezione dei dati personali).</p>
     </LegalPage>
   );
 }
@@ -78,7 +78,7 @@ export function TermsConditions() {
       </ul>
 
       <h2>Contact</h2>
-      <p>Granciare Estate, Allerona (TR), Umbria, Italy · <a href="mailto:info@granciare.com">info@granciare.com</a> · +39 0763 630996</p>
+      <p>Granciare Estate, Allerona (TR), Umbria, Italy · <a href="mailto:info@granciare.com">info@granciare.com</a> / <a href="mailto:enquiry@granciare.com">enquiry@granciare.com</a> · +39 0763 630996</p>
     </LegalPage>
   );
 }

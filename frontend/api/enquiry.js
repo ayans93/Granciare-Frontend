@@ -81,15 +81,16 @@ function formatPhone(raw) {
 // ── Format: guests → "12 (9A, 3C)" ──────────────────────────
 // Handles both new format (adults/children as numbers) and old
 // format (guests as "9 adults, 3 children" string).
-function formatGuests(adults, children, guestsStr) {
-  // New format: separate adult + child counts
+function formatGuests(adults, children, guestsStr, infants) {
+  // New format: separate adult + kid counts; infants (up to 3) are listed on top
   const a = parseInt(adults,   10);
   const c = parseInt(children, 10);
+  const i = parseInt(infants,  10) || 0;
   if (!isNaN(a) && a >= 0) {
     const safeC = isNaN(c) ? 0 : c;
     const total = a + safeC;
     if (total === 0) return '—';
-    return `${total} (${a}A, ${safeC}C)`;
+    return `${total} (${a} adults, ${safeC} kids)${i ? ` + ${i} infant${i === 1 ? '' : 's'}` : ''}`;
   }
   // Old format fallback: "9 adults, 3 children"
   if (guestsStr) {
@@ -151,7 +152,7 @@ async function appendToSheet(data) {
     formatPhone(data.phone),                                       // D: Phone
     data.checkIn  || '—',                                          // E: Check-in Date
     data.checkOut || '—',                                          // F: Check-out Date
-    formatGuests(data.adults, data.children, data.guests),         // G: Guests
+    formatGuests(data.adults, data.children, data.guests, data.infants),         // G: Guests
     [data.stayType === 'floor' ? 'Booking: One floor' : '', specialRequests === '—' ? '' : specialRequests].filter(Boolean).join(' · ') || '—', // H: Special Requests (+ booking type)
     message,                                                       // I: Message
     `${data.source || 'granciare.com'}${data.ref ? ' · ' + data.ref : ''}`, // J: Source + reference
@@ -181,7 +182,7 @@ async function sendNotificationEmail(data) {
     ? `${data.checkIn} → ${data.checkOut}`
     : 'Not specified';
 
-  const guestDisplay = formatGuests(data.adults, data.children);
+  const guestDisplay = formatGuests(data.adults, data.children, undefined, data.infants);
 
   const html = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #1e1c1a;">
@@ -263,7 +264,7 @@ async function sendGuestAcknowledgement(data) {
         <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0;">
           ${data.ref ? `<tr><td style="padding: 8px 0; color: #8a7f72; width: 140px;">Reference</td><td style="padding: 8px 0; font-weight: 600;">${esc(data.ref)}</td></tr>` : ''}
           <tr><td style="padding: 8px 0; color: #8a7f72;">Dates</td><td style="padding: 8px 0;">${esc(data.checkIn)} → ${esc(data.checkOut)} (${nights} nights)</td></tr>
-          <tr><td style="padding: 8px 0; color: #8a7f72;">Guests</td><td style="padding: 8px 0;">${esc(formatGuests(data.adults, data.children))}</td></tr>
+          <tr><td style="padding: 8px 0; color: #8a7f72;">Guests</td><td style="padding: 8px 0;">${esc(formatGuests(data.adults, data.children, undefined, data.infants))}</td></tr>
           <tr><td style="padding: 8px 0; color: #8a7f72;">Booking</td><td style="padding: 8px 0;">${esc(data.stayTypeLabel)}</td></tr>
           ${data.specialRequests ? `<tr><td style="padding: 8px 0; color: #8a7f72;">Requests</td><td style="padding: 8px 0;">${esc(data.specialRequests)}</td></tr>` : ''}
         </table>
@@ -281,7 +282,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, email, phone, checkIn, checkOut, adults, children, guests, specialRequests, message, source, bookingType } = req.body || {};
+  const { name, email, phone, checkIn, checkOut, adults, children, infants, guests, specialRequests, message, source, bookingType } = req.body || {};
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
@@ -308,12 +309,19 @@ export default async function handler(req, res) {
   if (!(stayNights >= 2 && stayNights <= 30)) {
     return res.status(400).json({ error: 'Stays must be between 2 and 30 nights.' });
   }
+  // Adults and kids count towards capacity; infants (up to 3 years) do not
   const totalGuests = (parseInt(adults, 10) || 0) + (parseInt(children, 10) || 0);
   if ((parseInt(adults, 10) || 0) < 1 || totalGuests > 16) {
     return res.status(400).json({ error: 'Please choose between 1 and 16 guests, with at least one adult.' });
   }
+  const infantCount = infants === undefined || infants === '' ? 0 : Number(infants);
+  if (!Number.isInteger(infantCount) || infantCount < 0 || infantCount > 10) {
+    return res.status(400).json({ error: 'Please choose between 0 and 10 infants.' });
+  }
 
-  // Partial ("one floor") bookings: only when switched on in Admin > Granciare Details, and up to 8 guests
+  // Partial ("one floor") bookings: only when switched on in Admin > Granciare Details,
+  // and up to FLOOR_MAX adults + kids (infants not counted)
+  const FLOOR_MAX = 6;
   let stayType = 'entire';
   if (bookingType === 'floor') {
     const sbCfg = getServerClient();
@@ -321,8 +329,8 @@ export default async function handler(req, res) {
       ? await sbCfg.from('site_config').select('value').eq('key', 'allow_partial_bookings').maybeSingle()
       : { data: null };
     if (String(cfgRow?.value || '').toLowerCase() === 'yes') {
-      if (totalGuests > 8) {
-        return res.status(400).json({ error: 'Partial bookings can only accommodate up to 8 guests.' });
+      if (totalGuests > FLOOR_MAX) {
+        return res.status(400).json({ error: `Partial bookings can only accommodate up to ${FLOOR_MAX} adults and kids (infants not counted).` });
       }
       stayType = 'floor';
     }
@@ -344,6 +352,7 @@ export default async function handler(req, res) {
     checkOut,
     adults,          // number (new format) or undefined (old format)
     children,        // number (new format) or undefined (old format)
+    infants:         infantCount,
     guests,          // string (old format) or undefined (new format)
     specialRequests, // string (new format) or undefined (old format)
     message:         String(message || '').slice(0, 3000),
@@ -367,13 +376,23 @@ export default async function handler(req, res) {
       check_out:        data.checkOut || null,
       adults:           parseInt(data.adults, 10) || 0,
       children:         parseInt(data.children, 10) || 0,
+      infants:          data.infants || 0,
       special_requests: data.specialRequests || null,
       status:           'enquiry',
     };
     // Booking type goes in its own column; if that column doesn't exist yet, it is noted in special requests
     const withType = { ...base, booking_type: data.stayType };
     const typeInRequests = { ...base, special_requests: [data.stayType === 'floor' ? 'Booking: One floor' : '', data.specialRequests].filter(Boolean).join(' · ') || null };
-    const tryInsert = async (row, noteCol) => sb.from('stay_requests').insert({ ...row, [noteCol]: data.message || null }).select('id').single();
+    // If the infants column doesn't exist yet, the count is noted in special requests instead
+    const tryInsert = async (row, noteCol) => {
+      let res = await sb.from('stay_requests').insert({ ...row, [noteCol]: data.message || null }).select('id').single();
+      if (res.error && /infants/i.test(res.error.message || '')) {
+        const { infants: _i, ...rest } = row;
+        const note = data.infants ? `Infants: ${data.infants}` : '';
+        res = await sb.from('stay_requests').insert({ ...rest, special_requests: [note, rest.special_requests].filter(Boolean).join(' · ') || null, [noteCol]: data.message || null }).select('id').single();
+      }
+      return res;
+    };
     // The guest's free-text note lives in `message` (older schema: `notes`).
     let { data: row, error: sbErr } = await tryInsert(withType, 'message');
     if (sbErr && /booking_type/i.test(sbErr.message || '')) ({ data: row, error: sbErr } = await tryInsert(typeInRequests, 'message'));
