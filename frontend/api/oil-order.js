@@ -7,7 +7,7 @@
 import { getServerClient } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
 import { sizeById, checkOrder, formatVolume } from './_lib/oilRules.js';
-import { escapeHtml as esc, sendMail, sendToEstate } from './_lib/mail.js';
+import { escapeHtml as esc, sendMail, sendToEstate, ESTATE_EMAIL } from './_lib/mail.js';
 import { COUNTRY_CODES, FIVE_L_SERVICEABLE, countryName } from './_lib/countries.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,8 +66,8 @@ export default async function handler(req, res) {
     address: String(address).trim().slice(0, 500), country: countryName(cc, 'en'), note,
   };
   const [estateEmailed, customerEmailed] = await Promise.all([
-    sendToEstate(`New Solivé order from ${order.name}${ref ? ` (${ref})` : ''} | ${qty} × ${size.label}`, estateHtml(order)).catch(() => false),
-    sendMail(order.email, `We've received your Solivé order${ref ? ` (${ref})` : ''} | Granciare Estate`, customerHtml(order)).catch(() => false),
+    sendToEstate(`New Solivé order from ${order.name}${ref ? ` (${ref})` : ''} | ${qty} × ${size.label}`, estateHtml(order), order.email).catch(() => false),
+    sendMail(order.email, `We've received your Solivé order${ref ? ` (${ref})` : ''} | Granciare Estate`, customerHtml(order), ESTATE_EMAIL).catch(() => false),
   ]);
   return res.status(200).json({ success: true, ref: ref || null, estateEmailed, customerEmailed });
 }

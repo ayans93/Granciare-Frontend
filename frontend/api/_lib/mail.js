@@ -23,7 +23,10 @@ export async function sendMail(to, subject, html, replyTo) {
   }
 }
 
-/** Sends an email to the estate inbox (NOTIFY_EMAIL). */
-export function sendToEstate(subject, html) {
-  return sendMail(process.env.NOTIFY_EMAIL, subject, html);
+// Where guests' replies go, and the fallback estate inbox if NOTIFY_EMAIL is not set
+export const ESTATE_EMAIL = 'info@granciare.com';
+
+/** Sends an email to the estate inbox (NOTIFY_EMAIL in Vercel, otherwise info@granciare.com). */
+export function sendToEstate(subject, html, replyTo) {
+  return sendMail(process.env.NOTIFY_EMAIL || ESTATE_EMAIL, subject, html, replyTo);
 }

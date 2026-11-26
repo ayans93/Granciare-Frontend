@@ -4,7 +4,7 @@
  * Receives a booking enquiry from the contact form.
  * 1. Validates required fields
  * 2. Appends a row to the 'Bookings' tab in Google Sheets
- * 3. Sends an email notification to admin@dviu.in
+ * 3. Sends an email notification to the estate inbox (NOTIFY_EMAIL, e.g. info@granciare.com)
  *
  * Bookings sheet columns (A–J):
  *   A: Timestamp (in Italian time)
@@ -24,14 +24,14 @@
  *   GOOGLE_SHEET_ID          — the spreadsheet ID from the sheet URL
  *   GMAIL_USER               — sender Gmail address (admin@dviu.in)
  *   GMAIL_APP_PASSWORD       — 16-character Gmail App Password
- *   NOTIFY_EMAIL             — recipient email (admin@dviu.in)
+ *   NOTIFY_EMAIL             — estate inbox for new enquiries (info@granciare.com)
  */
 
 import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 import { getServerClient, hasServiceKey } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
-import { escapeHtml as esc, sendMail } from './_lib/mail.js';
+import { escapeHtml as esc, sendMail, ESTATE_EMAIL } from './_lib/mail.js';
 import { BOOKINGS_OPEN_FROM } from './_lib/bookingWindow.js';
 import { accommodationById } from './_lib/accommodation.js';
 
@@ -245,7 +245,8 @@ async function sendNotificationEmail(data) {
 
   await transporter.sendMail({
     from:    `"Granciare Estate" <${process.env.GMAIL_USER}>`,
-    to:      process.env.NOTIFY_EMAIL,
+    to:      process.env.NOTIFY_EMAIL || ESTATE_EMAIL,
+    replyTo: data.email,
     subject: `New enquiry from ${data.name}${data.ref ? ` (${data.ref})` : ''} | Granciare Estate`,
     html,
   });
@@ -273,7 +274,7 @@ async function sendGuestAcknowledgement(data) {
         <p>Warm regards,<br/>The Granciare team</p>
       </div>
     </div>`;
-  return sendMail(data.email, `We've received your enquiry${data.ref ? ` (${data.ref})` : ''} | Granciare Estate`, html);
+  return sendMail(data.email, `We've received your enquiry${data.ref ? ` (${data.ref})` : ''} | Granciare Estate`, html, ESTATE_EMAIL);
 }
 
 // ── Main handler ──────────────────────────────────────────────
@@ -328,7 +329,7 @@ export default async function handler(req, res) {
   }
   const stayTypeLabel = accommodationById(stayType).label;
 
-  const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'NOTIFY_EMAIL'];
+  const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD'];
   const missingEnv  = requiredEnv.filter(k => !process.env[k]);
   if (missingEnv.length > 0) {
     console.error('Missing env vars:', missingEnv.join(', '));
