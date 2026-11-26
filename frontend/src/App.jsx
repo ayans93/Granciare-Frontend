@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { LanguageProvider } from './i18n/LanguageContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -10,7 +10,6 @@ import OurStory from './pages/OurStory';
 import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 import { PrivacyPolicy, TermsConditions } from './pages/Legal';
-import PasswordGate, { isAuthenticated } from './components/PasswordGate';
 
 // Scrolls to the top on page change, or to the #section in the URL
 // (e.g. "Order Solivé" → /olive-oil#order), waiting for it to render.
@@ -52,13 +51,8 @@ function Layout() {
   );
 }
 
-function ProtectedSite() {
-  const [authed, setAuthed] = useState(isAuthenticated);
-
-  if (!authed) {
-    return <PasswordGate onAuth={() => setAuthed(true)} />;
-  }
-
+// The website is public (the private-preview sign-in gate was removed at launch)
+function PublicSite() {
   return (
     <LanguageProvider>
       <Layout />
@@ -73,8 +67,8 @@ export default function App() {
       <Routes>
         {/* Admin panel — no gate, no navbar/footer */}
         <Route path="/admin/*" element={<Admin />} />
-        {/* Public site — behind password gate */}
-        <Route path="*" element={<ProtectedSite />} />
+        {/* Public site */}
+        <Route path="*" element={<PublicSite />} />
       </Routes>
     </BrowserRouter>
   );
