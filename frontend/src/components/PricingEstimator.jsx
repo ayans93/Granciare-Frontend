@@ -1,10 +1,9 @@
 /**
  * PricingEstimator
  *
- * Indicative price for the selected dates, using the nightly rates set in
- * Admin > Pricing > Villa Pricing (exclusive use of the whole estate, so the
- * guest count does not change the price). Nights with no published rate are
- * quoted on enquiry.
+ * Indicative price for the selected dates and accommodation (ground floor, first floor
+ * or entire villa), using the nightly rates set for that accommodation in
+ * Admin > Pricing > Villa Pricing. Nights with no published rate are quoted on enquiry.
  */
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -59,7 +58,7 @@ export function estimateStay(checkIn, checkOut, ranges) {
   };
 }
 
-export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
+export default function PricingEstimator({ checkIn, checkOut, accommodation = 'entire' }) {
   const { t, lang } = useTranslation();
   const [ranges, setRanges] = useState(cache ?? null);
   useEffect(() => {
@@ -69,15 +68,14 @@ export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
   }, []);
 
   if (!checkIn || !checkOut || !ranges) return null;
-  const est = estimateStay(checkIn, checkOut, ranges);
+  const est = estimateStay(checkIn, checkOut, ranges.filter(r => (r.accommodation || 'entire') === accommodation));
   if (!est) return null;
 
   const { nights, complete, labels } = est;
-  // Admin rates are for the whole villa; a single floor is half the villa rate
-  const share = floor ? 0.5 : 1;
-  const total = Math.round(est.total * share);
-  const min = Math.round(est.min * share);
-  const max = Math.round(est.max * share);
+  const total = Math.round(est.total);
+  const min = Math.round(est.min);
+  const max = Math.round(est.max);
+  const accLabel = { ground: t('bk.groundFloor'), first: t('bk.firstFloor'), entire: t('bk.bookEntire') }[accommodation];
   const nightLabel = nightsLabel(nights, t, lang);
 
   return (
@@ -90,7 +88,7 @@ export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
       {complete ? (
         <div className="pe__range">
           <div className="pe__range-row">
-            <span className="pe__range-label">{t('pricing.perNight')}{floor ? ` · ${t('bk.bookFloor')}` : ''}{labels.length ? ` · ${labels.join(' / ')}` : ''}</span>
+            <span className="pe__range-label">{t('pricing.perNight')}{accLabel ? ` · ${accLabel}` : ''}{labels.length ? ` · ${labels.join(' / ')}` : ''}</span>
             <span className="pe__range-value">{min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`}</span>
           </div>
           <div className="pe__range-row pe__range-row--estimate">
@@ -108,7 +106,7 @@ export default function PricingEstimator({ checkIn, checkOut, floor = false }) {
       )}
 
       <p className="pe__disclaimer">
-        {t('bk.inclTax')} · {floor ? t('bk.disclaimerFloor') : t('pricing.disclaimer')}
+        {t('bk.inclTax')} · {accommodation === 'entire' ? t('pricing.disclaimer') : t('bk.disclaimerFloor')}
       </p>
     </div>
   );

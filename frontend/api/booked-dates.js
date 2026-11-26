@@ -36,7 +36,7 @@ export default async function handler(req, res) {
 
   const { data, error } = await sb
     .from('stay_requests')
-    .select('check_in, check_out')
+    .select('*')
     .eq('status', 'confirmed');
 
   if (error) {
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
   const bookedRanges = (data || [])
     .filter(r => r.check_in && r.check_out)
-    .map(r => ({ checkIn: r.check_in, checkOut: r.check_out }));
+    .map(r => ({ checkIn: r.check_in, checkOut: r.check_out, accommodation: r.booking_type || 'entire' }));
 
   // Always fresh: a confirmation in admin should show on the next page load
   res.setHeader('Cache-Control', 'no-store');

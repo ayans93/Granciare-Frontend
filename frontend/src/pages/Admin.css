@@ -539,3 +539,4 @@
 }
 .cfg-toggle__opt--on { background: var(--adm-gold); border-color: var(--adm-gold); color: #fff; font-weight: 600; }
 .type-badge { margin-left: 6px; font-size: 10px; font-weight: 600; color: var(--adm-gold); background: rgba(184,151,106,0.15); padding: 2px 6px; border-radius: 8px; }
+.type-badge--plain { margin-left: 0; }

@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { BOTTLE_SIZES, sizeById } from '../lib/oilRules'
 import './Admin.css'
+import { ACCOMMODATIONS, accommodationById, accommodationsClash } from '../lib/accommodation'
+// Short and full names for an accommodation type ('floor' = the earlier single-floor option)
+const accShort = id => id === 'floor' ? 'Floor' : accommodationById(id || 'entire').short
+const accLabel = id => id === 'floor' ? 'One floor' : accommodationById(id || 'entire').label
 
 // ── CONSTANTS ──────────────────────────────────────────────
 const TABS = [
@@ -204,7 +208,7 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
         {isStay ? (
           <>
             <td>{fmt(row.check_in)} → {fmt(row.check_out)}</td>
-            <td>{nights(row.check_in, row.check_out)}n · {row.adults}A {row.children > 0 ? `${row.children}K ` : ''}{row.infants > 0 ? `${row.infants}I` : ''}{row.booking_type === 'floor' && <span className="type-badge">Floor</span>}</td>
+            <td>{nights(row.check_in, row.check_out)}n{row.infants > 0 ? ` · ${row.infants} infant${row.infants === 1 ? '' : 's'}` : ''}{row.adults > 0 ? ` · ${row.adults}A${row.children > 0 ? ` ${row.children}K` : ''}` : ''}<span className="type-badge">{accShort(row.booking_type)}</span></td>
           </>
         ) : (
           <td>{row.quantity} × {oilSize(row)}</td>
@@ -223,7 +227,7 @@ function RequestRow({ row, onStatusChange, isStay, adminName }) {
           <td colSpan={isStay ? 7 : 6}>
             <div className="req-detail-inner">
               {isStay && <p><strong>Reference:</strong> {stayRef(row.id)}</p>}
-              {isStay && <p><strong>Booking:</strong> {row.booking_type === 'floor' ? 'One floor (up to 6 adults and kids)' : 'Entire villa'}</p>}
+              {isStay && <p><strong>Accommodation:</strong> {accLabel(row.booking_type)}{row.infants > 0 ? ` · ${row.infants} infant${row.infants === 1 ? '' : 's'}` : ''}</p>}
               {row.phone && <p><strong>Phone:</strong> {row.phone}</p>}
               {(row.message || row.notes) && <p className="req-message"><strong>Message:</strong> {row.message || row.notes}</p>}
               {row.special_requests && <p><strong>Special requests:</strong> {row.special_requests}</p>}
@@ -259,11 +263,12 @@ function StayRequests({ adminName }) {
     if (status === 'confirmed') {
       const row = rows.find(r => r.id === id)
       if (row?.check_in && row?.check_out) {
-        const { data: clash, error } = await supabase.from('stay_requests')
-          .select('id, name, check_in, check_out')
+        const { data: overlapping, error } = await supabase.from('stay_requests')
+          .select('*')
           .eq('status', 'confirmed').neq('id', id)
           .lt('check_in', row.check_out).gt('check_out', row.check_in)
-          .limit(1)
+        // Different floors can be booked for the same nights; the entire villa clashes with everything
+        const clash = (overlapping || []).filter(o => accommodationsClash(row.booking_type || 'entire', o.booking_type || 'entire'))
         if (error) {
           window.alert('Could not check availability. Please try again.')
           fetch()
@@ -271,7 +276,7 @@ function StayRequests({ adminName }) {
         }
         if (clash && clash.length) {
           const c = clash[0]
-          window.alert(`These dates overlap a confirmed stay: ${c.name} (${fmt(c.check_in)} → ${fmt(c.check_out)}).\n\nChange or revert that booking first.`)
+          window.alert(`These dates overlap a confirmed stay: ${c.name}, ${accLabel(c.booking_type)} (${fmt(c.check_in)} → ${fmt(c.check_out)}).\n\nChange or revert that booking first.`)
           fetch()
           return
         }
@@ -370,7 +375,7 @@ function StayConfirmations() {
               <div className="confirm-card__body">
                 <p className="confirm-name">{r.name} <span className="confirm-ref">{stayRef(r.id)}</span></p>
                 <p className="confirm-meta">{r.email} {r.phone && `· ${r.phone}`}</p>
-                <p className="confirm-guests">{r.booking_type === 'floor' ? 'One floor · ' : 'Entire villa · '}{r.adults} adults{r.children > 0 ? `, ${r.children} kids` : ''}{r.infants > 0 ? `, ${r.infants} infant${r.infants === 1 ? '' : 's'}` : ''}</p>
+                <p className="confirm-guests">{accLabel(r.booking_type)}{r.infants > 0 ? ` · ${r.infants} infant${r.infants === 1 ? '' : 's'}` : ''}{r.adults > 0 ? ` · ${r.adults} adults${r.children > 0 ? `, ${r.children} kids` : ''}` : ''}</p>
                 {r.special_requests && (
                   <div className="confirm-special">
                     <span>Special requests:</span> {r.special_requests}
@@ -733,22 +738,25 @@ function Pricing() {
   const [villaPrices, setVillaPrices] = useState([])
   const [oilSaving, setOilSaving] = useState(false)
   const [oilSaved, setOilSaved] = useState(false)
-  const [newRange, setNewRange] = useState({ label: '', date_from: '', date_to: '', price_per_night: '' })
+  const EMPTY_RANGE = { label: '', date_from: '', date_to: '', price_ground: '', price_first: '', price_entire: '' }
+  const [newRange, setNewRange] = useState(EMPTY_RANGE)
   const [addingRange, setAddingRange] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editRow, setEditRow] = useState({})
   const [priceErr, setPriceErr] = useState('')
   const [rangeErr, setRangeErr] = useState('')
 
-  // Returns an error message, or '' if the range is valid
+  // Returns an error message, or '' if the range is valid. Ranges may overlap only
+  // when they are for different accommodation types (G, 1F, Full villa).
   function validateRange(r, ignoreId) {
     const price = parseFloat(r.price_per_night)
+    const acc = r.accommodation || 'entire'
     if (!String(r.label || '').trim()) return 'Please give the range a label.'
     if (!r.date_from || !r.date_to) return 'Please choose both dates.'
     if (r.date_to < r.date_from) return 'The end date is before the start date.'
     if (!(price > 0)) return 'The nightly rate must be above €0.'
-    const clash = villaPrices.find(v => v.id !== ignoreId && rangesOverlap(r.date_from, r.date_to, v.date_from, v.date_to))
-    if (clash) return `These dates overlap "${clash.label}" (${fmt(clash.date_from)} – ${fmt(clash.date_to)}).`
+    const clash = villaPrices.find(v => v.id !== ignoreId && (v.accommodation || 'entire') === acc && rangesOverlap(r.date_from, r.date_to, v.date_from, v.date_to))
+    if (clash) return `${accShort(acc)}: these dates overlap "${clash.label}" (${fmt(clash.date_from)} – ${fmt(clash.date_to)}).`
     return ''
   }
 
@@ -768,7 +776,9 @@ function Pricing() {
 
   async function fetchVilla() {
     const { data } = await supabase.from('villa_pricing').select('*').order('date_from')
-    setVillaPrices(data || [])
+    // Same dates together, in the order G, 1F, Full villa
+    const order = { ground: 0, first: 1, entire: 2 }
+    setVillaPrices((data || []).sort((a, b) => a.date_from.localeCompare(b.date_from) || (order[a.accommodation || 'entire'] - order[b.accommodation || 'entire'])))
   }
 
   async function saveAllOilPrices() {
@@ -789,13 +799,24 @@ function Pricing() {
     setTimeout(() => setOilSaved(false), 2500)
   }
 
+  // One range = the same dates with a price for each accommodation type (any left blank is skipped)
   async function addVillaRange() {
-    const msg = validateRange(newRange)
-    setRangeErr(msg)
-    if (msg) return
-    await supabase.from('villa_pricing').insert({ ...newRange, label: newRange.label.trim(), price_per_night: parseFloat(newRange.price_per_night) })
-    await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Villa pricing updated', body: `New range: ${newRange.label}` })
-    setNewRange({ label: '', date_from: '', date_to: '', price_per_night: '' })
+    const rows = ACCOMMODATIONS
+      .filter(a => String(newRange[`price_${a.id}`] ?? '').trim() !== '')
+      .map(a => ({ label: newRange.label.trim(), date_from: newRange.date_from, date_to: newRange.date_to, accommodation: a.id, price_per_night: newRange[`price_${a.id}`] }))
+    if (!rows.length) { setRangeErr('Enter a price for at least one accommodation type.'); return }
+    for (const r of rows) {
+      const msg = validateRange(r)
+      if (msg) { setRangeErr(msg); return }
+    }
+    setRangeErr('')
+    const { error } = await supabase.from('villa_pricing').insert(rows.map(r => ({ ...r, price_per_night: parseFloat(r.price_per_night) })))
+    if (error) {
+      setRangeErr(/accommodation/i.test(error.message) ? 'The accommodation column is missing in Supabase. Run the SQL from the setup notes, then try again.' : error.message)
+      return
+    }
+    await supabase.from('notifications').insert({ type: 'pricing_updated', title: 'Villa pricing updated', body: `New range: ${newRange.label} (${rows.map(r => accShort(r.accommodation)).join(', ')})` })
+    setNewRange(EMPTY_RANGE)
     setAddingRange(false)
     fetchVilla()
   }
@@ -814,6 +835,7 @@ function Pricing() {
       label: editRow.label.trim(),
       date_from: editRow.date_from,
       date_to: editRow.date_to,
+      accommodation: editRow.accommodation || 'entire',
       price_per_night: parseFloat(editRow.price_per_night),
     }).eq('id', id)
     setEditingId(null)
@@ -869,21 +891,28 @@ function Pricing() {
             <h3>Villa Pricing</h3>
             <button className="btn-primary btn-sm-ver" onClick={() => { setAddingRange(a => !a); setEditingId(null); setRangeErr('') }}>+ Add range</button>
           </div>
-          <p className="pricing-note">Set price per night for specific date ranges (peak season, shoulder, etc.). Ranges cannot overlap; dates without a range show "Price on request" on the website.</p>
+          <p className="pricing-note">Indicative price per night for each date range and accommodation type: G (ground floor), 1F (first floor) and Full villa. Each type shows its own price on the website. Ranges of the same type cannot overlap; dates without a price show "Price on request".</p>
           {rangeErr && <p className="form-err">{rangeErr}</p>}
 
           {addingRange && (
             <div className="form-card">
               <div className="form-row">
                 <input placeholder="Label (e.g. Peak Summer)" value={newRange.label} onChange={e => setNewRange({...newRange, label: e.target.value})} />
-                <input placeholder="€ per night" type="number" value={newRange.price_per_night} onChange={e => setNewRange({...newRange, price_per_night: e.target.value})} />
               </div>
               <div className="form-row">
                 <div className="form-field"><label>From</label><input type="date" value={newRange.date_from} onChange={e => setNewRange({...newRange, date_from: e.target.value})} /></div>
                 <div className="form-field"><label>To</label><input type="date" value={newRange.date_to} onChange={e => setNewRange({...newRange, date_to: e.target.value})} /></div>
               </div>
+              <div className="form-row">
+                {ACCOMMODATIONS.map(a => (
+                  <div key={a.id} className="form-field">
+                    <label>{a.short} · € per night</label>
+                    <input type="number" min="1" placeholder={a.label} value={newRange[`price_${a.id}`]} onChange={e => setNewRange({...newRange, [`price_${a.id}`]: e.target.value})} />
+                  </div>
+                ))}
+              </div>
               <div className="form-actions">
-                <button className="btn-primary" onClick={addVillaRange} disabled={!newRange.label || !newRange.date_from || !newRange.date_to || !newRange.price_per_night}>Save range</button>
+                <button className="btn-primary" onClick={addVillaRange} disabled={!newRange.label || !newRange.date_from || !newRange.date_to}>Save range</button>
                 <button className="btn-ghost" onClick={() => { setAddingRange(false); setRangeErr('') }}>Cancel</button>
               </div>
             </div>
@@ -897,7 +926,7 @@ function Pricing() {
           )}
           {villaPrices.length > 0 && (
             <table className="data-table">
-              <thead><tr><th>Label</th><th>From</th><th>To</th><th>€/night</th><th></th></tr></thead>
+              <thead><tr><th>Label</th><th>From</th><th>To</th><th>Type</th><th>€/night</th><th></th></tr></thead>
               <tbody>
                 {villaPrices.map(r => (
                   editingId === r.id ? (
@@ -905,6 +934,11 @@ function Pricing() {
                       <td><input value={editRow.label} onChange={e => setEditRow({...editRow, label: e.target.value})} /></td>
                       <td><input type="date" value={editRow.date_from} onChange={e => setEditRow({...editRow, date_from: e.target.value})} /></td>
                       <td><input type="date" value={editRow.date_to} onChange={e => setEditRow({...editRow, date_to: e.target.value})} /></td>
+                      <td>
+                        <select value={editRow.accommodation || 'entire'} onChange={e => setEditRow({...editRow, accommodation: e.target.value})}>
+                          {ACCOMMODATIONS.map(a => <option key={a.id} value={a.id}>{a.short}</option>)}
+                        </select>
+                      </td>
                       <td><input type="number" value={editRow.price_per_night} onChange={e => setEditRow({...editRow, price_per_night: e.target.value})} className="price-input" /></td>
                       <td className="row-actions">
                         <button className="btn-sm btn-sm--save" onClick={() => updateVillaRange(r.id)}>Save</button>
@@ -916,6 +950,7 @@ function Pricing() {
                       <td>{r.label}</td>
                       <td>{fmt(r.date_from)}</td>
                       <td>{fmt(r.date_to)}</td>
+                      <td><span className="type-badge type-badge--plain">{accShort(r.accommodation)}</span></td>
                       <td>€{r.price_per_night}</td>
                       <td className="row-actions">
                         <button className="btn-sm" onClick={() => { setEditingId(r.id); setEditRow({...r}); setAddingRange(false) }}>Edit</button>
@@ -1211,7 +1246,7 @@ function GranciareDetails() {
 
       <div className="cfg-card cfg-card--spaced">
         <h3 className="cfg-card__title">Booking form · partial bookings</h3>
-        <p className="cfg-intro">When on, guests choose "Book a floor" (up to 6 adults and kids; infants not counted) or "Book entire villa" on the booking form. When off, the choice is hidden and every enquiry is for the entire villa.</p>
+        <p className="cfg-intro">When on, guests choose "Ground floor" (best for up to 6 guests), "First floor" (up to 10) or "Entire villa" (up to 16) on the booking form. When off, the choice is hidden and every enquiry is for the entire villa.</p>
         <div className="cfg-toggle" role="radiogroup" aria-label="Allow partial bookings">
           <span className="cfg-label" style={{ marginBottom: 0 }}>Allow partial bookings</span>
           {['yes', 'no'].map(v => (

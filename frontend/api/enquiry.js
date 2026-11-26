@@ -33,6 +33,7 @@ import { getServerClient, hasServiceKey } from './_lib/supabase.js';
 import { notify } from './_lib/notify.js';
 import { escapeHtml as esc, sendMail } from './_lib/mail.js';
 import { BOOKINGS_OPEN_FROM } from './_lib/bookingWindow.js';
+import { accommodationById } from './_lib/accommodation.js';
 
 // ── CORS helper ───────────────────────────────────────────────
 function setCors(req, res) {
@@ -89,7 +90,7 @@ function formatGuests(adults, children, guestsStr, infants) {
   if (!isNaN(a) && a >= 0) {
     const safeC = isNaN(c) ? 0 : c;
     const total = a + safeC;
-    if (total === 0) return '—';
+    if (total === 0) return i ? `${i} infant${i === 1 ? '' : 's'}` : 'No infants';
     return `${total} (${a} adults, ${safeC} kids)${i ? ` + ${i} infant${i === 1 ? '' : 's'}` : ''}`;
   }
   // Old format fallback: "9 adults, 3 children"
@@ -153,7 +154,7 @@ async function appendToSheet(data) {
     data.checkIn  || '—',                                          // E: Check-in Date
     data.checkOut || '—',                                          // F: Check-out Date
     formatGuests(data.adults, data.children, data.guests, data.infants),         // G: Guests
-    [data.stayType === 'floor' ? 'Booking: One floor' : '', specialRequests === '—' ? '' : specialRequests].filter(Boolean).join(' · ') || '—', // H: Special Requests (+ booking type)
+    [data.stayType !== 'entire' ? `Booking: ${data.stayTypeLabel}` : '', specialRequests === '—' ? '' : specialRequests].filter(Boolean).join(' · ') || '—', // H: Special Requests (+ booking type)
     message,                                                       // I: Message
     `${data.source || 'granciare.com'}${data.ref ? ' · ' + data.ref : ''}`, // J: Source + reference
   ];
@@ -214,7 +215,7 @@ async function sendNotificationEmail(data) {
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${esc(checkInOut)}</td>
           </tr>
           <tr>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Guests</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4; color: #8a7f72; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">Infants</td>
             <td style="padding: 12px 0; border-bottom: 1px solid #e8e0d4;">${guestDisplay}</td>
           </tr>
           <tr>
@@ -264,7 +265,7 @@ async function sendGuestAcknowledgement(data) {
         <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0;">
           ${data.ref ? `<tr><td style="padding: 8px 0; color: #8a7f72; width: 140px;">Reference</td><td style="padding: 8px 0; font-weight: 600;">${esc(data.ref)}</td></tr>` : ''}
           <tr><td style="padding: 8px 0; color: #8a7f72;">Dates</td><td style="padding: 8px 0;">${esc(data.checkIn)} → ${esc(data.checkOut)} (${nights} nights)</td></tr>
-          <tr><td style="padding: 8px 0; color: #8a7f72;">Guests</td><td style="padding: 8px 0;">${esc(formatGuests(data.adults, data.children, undefined, data.infants))}</td></tr>
+          <tr><td style="padding: 8px 0; color: #8a7f72;">Infants</td><td style="padding: 8px 0;">${esc(formatGuests(data.adults, data.children, undefined, data.infants))}</td></tr>
           <tr><td style="padding: 8px 0; color: #8a7f72;">Booking</td><td style="padding: 8px 0;">${esc(data.stayTypeLabel)}</td></tr>
           ${data.specialRequests ? `<tr><td style="padding: 8px 0; color: #8a7f72;">Requests</td><td style="padding: 8px 0;">${esc(data.specialRequests)}</td></tr>` : ''}
         </table>
@@ -309,33 +310,23 @@ export default async function handler(req, res) {
   if (!(stayNights >= 2 && stayNights <= 30)) {
     return res.status(400).json({ error: 'Stays must be between 2 and 30 nights.' });
   }
-  // Adults and kids count towards capacity; infants (up to 3 years) do not
-  const totalGuests = (parseInt(adults, 10) || 0) + (parseInt(children, 10) || 0);
-  if ((parseInt(adults, 10) || 0) < 1 || totalGuests > 16) {
-    return res.status(400).json({ error: 'Please choose between 1 and 16 guests, with at least one adult.' });
-  }
+  // Guests choose the accommodation that suits their group (ground floor ~6, first floor ~10,
+  // entire villa ~16); only infants (up to 3 years) are counted on the form.
   const infantCount = infants === undefined || infants === '' ? 0 : Number(infants);
   if (!Number.isInteger(infantCount) || infantCount < 0 || infantCount > 10) {
     return res.status(400).json({ error: 'Please choose between 0 and 10 infants.' });
   }
 
-  // Partial ("one floor") bookings: only when switched on in Admin > Granciare Details,
-  // and up to FLOOR_MAX adults + kids (infants not counted)
-  const FLOOR_MAX = 6;
+  // Ground or first floor only when switched on in Admin > Granciare Details; otherwise the entire villa
   let stayType = 'entire';
-  if (bookingType === 'floor') {
+  if (bookingType === 'ground' || bookingType === 'first') {
     const sbCfg = getServerClient();
     const { data: cfgRow } = sbCfg
       ? await sbCfg.from('site_config').select('value').eq('key', 'allow_partial_bookings').maybeSingle()
       : { data: null };
-    if (String(cfgRow?.value || '').toLowerCase() === 'yes') {
-      if (totalGuests > FLOOR_MAX) {
-        return res.status(400).json({ error: `Partial bookings can only accommodate up to ${FLOOR_MAX} adults and kids (infants not counted).` });
-      }
-      stayType = 'floor';
-    }
+    if (String(cfgRow?.value || '').toLowerCase() === 'yes') stayType = bookingType;
   }
-  const stayTypeLabel = stayType === 'floor' ? 'One floor' : 'Entire villa';
+  const stayTypeLabel = accommodationById(stayType).label;
 
   const requiredEnv = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'NOTIFY_EMAIL'];
   const missingEnv  = requiredEnv.filter(k => !process.env[k]);
@@ -350,8 +341,8 @@ export default async function handler(req, res) {
     phone,
     checkIn,
     checkOut,
-    adults,          // number (new format) or undefined (old format)
-    children,        // number (new format) or undefined (old format)
+    adults:          adults ?? 0,     // no longer asked on the form (accommodation is chosen instead)
+    children:        children ?? 0,
     infants:         infantCount,
     guests,          // string (old format) or undefined (new format)
     specialRequests, // string (new format) or undefined (old format)
@@ -382,7 +373,7 @@ export default async function handler(req, res) {
     };
     // Booking type goes in its own column; if that column doesn't exist yet, it is noted in special requests
     const withType = { ...base, booking_type: data.stayType };
-    const typeInRequests = { ...base, special_requests: [data.stayType === 'floor' ? 'Booking: One floor' : '', data.specialRequests].filter(Boolean).join(' · ') || null };
+    const typeInRequests = { ...base, special_requests: [data.stayType !== 'entire' ? `Booking: ${data.stayTypeLabel}` : '', data.specialRequests].filter(Boolean).join(' · ') || null };
     // If the infants column doesn't exist yet, the count is noted in special requests instead
     const tryInsert = async (row, noteCol) => {
       let res = await sb.from('stay_requests').insert({ ...row, [noteCol]: data.message || null }).select('id').single();

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import './DateRangePicker.css';
 import { BOOKINGS_OPEN_FROM } from '../lib/bookingWindow';
+import { accommodationsClash } from '../lib/accommodation';
 
 const LOCALES = { en: 'en-GB', it: 'it-IT', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT', cs: 'cs-CZ', ru: 'ru-RU' };
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -122,7 +123,7 @@ function CalendarMonth({ year, month, checkIn, checkOut, hoveredDate, bookedRang
   );
 }
 
-export default function DateRangePicker({ checkIn, checkOut, onChange }) {
+export default function DateRangePicker({ checkIn, checkOut, onChange, accommodation = 'entire' }) {
   const { t, lang } = useTranslation();
   const locale = LOCALES[lang] || 'en-GB';
   const today = startOfDay(new Date());
@@ -134,13 +135,16 @@ export default function DateRangePicker({ checkIn, checkOut, onChange }) {
   const [viewYear,  setViewYear]  = useState(firstView.getFullYear());
   const [viewMonth, setViewMonth] = useState(firstView.getMonth());
   const [hoveredDate, setHoveredDate] = useState(null);
-  const [bookedRanges, setBookedRanges] = useState([]);
+  const [allRanges, setBookedRanges] = useState([]);
+  // A confirmed stay only blocks the accommodation it clashes with: a ground-floor stay
+  // leaves the first floor free, the entire villa blocks both. Estate closures block everything.
+  const bookedRanges = allRanges.filter(r => !r.accommodation || accommodationsClash(accommodation, r.accommodation));
   const [loadingRanges, setLoadingRanges] = useState(false);
   const wrapRef = useRef(null);
 
   // Fetch booked ranges when picker opens
   useEffect(() => {
-    if (!open || bookedRanges.length > 0) return;
+    if (!open || allRanges.length > 0) return;
     setLoadingRanges(true);
     fetch('/api/booked-dates')
       .then(r => r.json())

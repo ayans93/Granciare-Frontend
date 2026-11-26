@@ -19,12 +19,13 @@ function parseList(v) {
   try { const a = JSON.parse(v); return Array.isArray(a) ? a.map(x => String(x).trim()).filter(Boolean) : null; } catch { return null; }
 }
 import './BookingWidget.css';
+import { ACCOMMODATIONS } from '../lib/accommodation';
 
 export default function BookingWidget({ variant = 'light' }) {
   const { t, lang } = useTranslation();
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
-  const [form, setForm] = useState({ adults: 2, children: 0, infants: 0, name: '', email: '', phone: '', notes: '' });
-  const [guestRaw, setGuestRaw] = useState({ adults: '2', children: '0', infants: '0' });
+  const [form, setForm] = useState({ infants: 0, name: '', email: '', phone: '', notes: '' });
+  const [guestRaw, setGuestRaw] = useState({ infants: '0' });
   const [suggestedTags, setSuggestedTags] = useState(DEFAULT_TAGS);
   const [defaultTags, setDefaultTags] = useState(DEFAULT_SELECTED);
   const [tags, setTags] = useState(DEFAULT_SELECTED);
@@ -41,22 +42,15 @@ export default function BookingWidget({ variant = 'light' }) {
   }, []);
   const [tagInput, setTagInput] = useState('');
 
-  const MAX_GUESTS = 16;
-  const FLOOR_MAX_GUESTS = 6;   // adults + kids; infants are not counted
   const MAX_INFANTS = 10;
-  // Adults and kids count towards capacity; infants (up to 3 years) do not
-  const guestTotal = form.adults + form.children;
-  const guestOverLimit = guestTotal > MAX_GUESTS;
 
-  // "Book a floor / Book entire villa" — shown only when Admin > Granciare Details allows partial bookings
+  // Accommodation: ground floor (best for up to 6), first floor (up to 10) or entire villa (up to 16).
+  // The floors are offered only when Admin > Granciare Details allows partial bookings.
   const [partialAllowed, setPartialAllowed] = useState(false);
-  const [bookingType, setBookingType] = useState('entire');   // 'entire' | 'floor'
-  const isFloor = partialAllowed && bookingType === 'floor';
-  const floorOverLimit = isFloor && guestTotal > FLOOR_MAX_GUESTS;
-  // More than 6 adults + kids switches to the entire villa; the guest can still pick a floor, which then shows an error
-  useEffect(() => {
-    if (guestTotal > FLOOR_MAX_GUESTS) setBookingType('entire');
-  }, [guestTotal]);
+  const [bookingType, setBookingType] = useState('entire');   // 'ground' | 'first' | 'entire'
+  const accommodation = partialAllowed ? bookingType : 'entire';
+  const isFloor = accommodation !== 'entire';
+  const accTitle = { ground: t('bk.groundFloor'), first: t('bk.firstFloor'), entire: t('bk.bookEntire') };
 
 
 
@@ -73,7 +67,7 @@ export default function BookingWidget({ variant = 'light' }) {
   // +/− buttons: block going below min, allow going above MAX (error shows instead)
   const adjustGuests = (field, delta) => {
     setForm(prev => {
-      const min = field === 'adults' ? 1 : 0;
+      const min = 0;
       let proposed = Math.max(min, prev[field] + delta);
       if (field === 'infants') proposed = Math.min(proposed, MAX_INFANTS);
       setGuestRaw(r => ({ ...r, [field]: String(proposed) }));
@@ -92,7 +86,7 @@ export default function BookingWidget({ variant = 'light' }) {
 
   // On blur — normalise empty/invalid inputs to their minimum
   const handleGuestBlur = (field) => {
-    const min = field === 'adults' ? 1 : 0;
+    const min = 0;
     const parsed = parseInt(guestRaw[field], 10);
     let safe = isNaN(parsed) || parsed < min ? min : parsed;
     if (field === 'infants') safe = Math.min(safe, MAX_INFANTS);
@@ -149,10 +143,6 @@ export default function BookingWidget({ variant = 'light' }) {
       setError(t('bk.errPhone'));
       return;
     }
-    if (floorOverLimit) {
-      setError(t('bk.floorMax', { max: FLOOR_MAX_GUESTS }));
-      return;
-    }
     if (!tcAccepted) {
       setTcError(true);
       return;
@@ -187,13 +177,11 @@ export default function BookingWidget({ variant = 'light' }) {
           phone: form.phone,
           checkIn: dates.checkIn,
           checkOut: dates.checkOut,
-          adults: form.adults,
-          children: form.children,
           infants: form.infants,
           specialRequests: tags.length > 0 ? tags.join(', ') : '',
           message: form.notes || '',
           source: 'granciare.com · Booking Form',
-          bookingType: partialAllowed ? bookingType : 'entire',
+          bookingType: accommodation,
         }),
       });
 
@@ -272,16 +260,16 @@ export default function BookingWidget({ variant = 'light' }) {
               <span className="booking-confirm__label">{t('booking.confirmNights')}</span>
               <span className="booking-confirm__value">{nightsLabel(nights, t, lang)}</span>
             </div>
-            {partialAllowed && (
+            <div className="booking-confirm__row">
+              <span className="booking-confirm__label">{t('bk.accommodation')}</span>
+              <span className="booking-confirm__value">{accTitle[accommodation]}</span>
+            </div>
+            {form.infants > 0 && (
               <div className="booking-confirm__row">
-                <span className="booking-confirm__label">{t('bk.bookingLabel')}</span>
-                <span className="booking-confirm__value">{bookingType === 'floor' ? t('bk.bookFloor') : t('bk.bookEntire')}</span>
+                <span className="booking-confirm__label">{t('bk.infants')}</span>
+                <span className="booking-confirm__value">{form.infants === 1 ? t('bk.infant1') : t('bk.infantN', { n: form.infants })}</span>
               </div>
             )}
-            <div className="booking-confirm__row">
-              <span className="booking-confirm__label">{t('common.guests')}</span>
-              <span className="booking-confirm__value">{form.adults === 1 ? t('bk.adult1') : t('bk.adultN', { n: form.adults })}{form.children > 0 ? `, ${form.children === 1 ? t('bk.child1') : t('bk.childN', { n: form.children })}` : ''}{form.infants > 0 ? `, ${form.infants === 1 ? t('bk.infant1') : t('bk.infantN', { n: form.infants })}` : ''}</span>
-            </div>
             {tags.length > 0 && (
               <div className="booking-confirm__row booking-confirm__row--extras">
                 <span className="booking-confirm__label">{t('common.specialRequests')}</span>
@@ -309,8 +297,8 @@ export default function BookingWidget({ variant = 'light' }) {
                 setTags(defaultTags);
                 setTagInput('');
                 setDates({ checkIn: '', checkOut: '' });
-                setForm({ adults: 2, children: 0, infants: 0, name: '', email: '', phone: '', notes: '' });
-                setGuestRaw({ adults: '2', children: '0', infants: '0' });
+                setForm({ infants: 0, name: '', email: '', phone: '', notes: '' });
+                setGuestRaw({ infants: '0' });
                 setBookingType('entire');
               }}
             >{t('booking.newEnquiry')}</button>
@@ -335,6 +323,7 @@ export default function BookingWidget({ variant = 'light' }) {
           <DateRangePicker
             checkIn={dates.checkIn}
             checkOut={dates.checkOut}
+            accommodation={accommodation}
             onChange={handleDates}
           />
           {dateError ? (
@@ -344,47 +333,36 @@ export default function BookingWidget({ variant = 'light' }) {
           )}
         </div>
 
-        {/* Guests — Adults + Children counters */}
+        {/* Accommodation — ground floor / first floor / entire villa, with the group size each suits */}
         <div className="form-group">
-          <label>{t('common.guests')}</label>
-          <p className="form-hint" style={{marginTop:0, marginBottom:'12px'}}>{t('bk.bestSuited')}</p>
-          <div className={`guest-counters${guestOverLimit ? ' guest-counters--error' : ''}`}>
-            <div className="guest-counter">
-              <div className="guest-counter__label">
-                <span>{t('bk.adults')}</span>
-                <span className="guest-counter__sub">{t('bk.ageAdult')}</span>
+          <label>{t('bk.accommodation')}</label>
+          {partialAllowed ? (
+            <>
+              <p className="form-hint" style={{ marginTop: 0, marginBottom: '12px' }}>{t('bk.chooseAccommodation')}</p>
+              <div className="booking-type booking-type--3" role="radiogroup" aria-label={t('bk.accommodation')}>
+                {ACCOMMODATIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={bookingType === opt.id}
+                    className={`booking-type__opt${bookingType === opt.id ? ' booking-type__opt--active' : ''}`}
+                    onClick={() => { setBookingType(opt.id); setError(''); }}
+                  >
+                    <span className="booking-type__title">{accTitle[opt.id]}</span>
+                    <span className="booking-type__sub">{t('bk.bestFor', { n: opt.max })}</span>
+                  </button>
+                ))}
               </div>
-              <div className="guest-counter__control">
-                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('adults', -1)} aria-label="Fewer adults">−</button>
-                <input
-                  type="number"
-                  className="guest-counter__input"
-                  value={guestRaw.adults}
-                  min="1" max={MAX_GUESTS}
-                  onChange={e => handleGuestChange('adults', e.target.value)}
-                  onBlur={() => handleGuestBlur('adults')}
-                />
-                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('adults', 1)} aria-label="More adults">+</button>
-              </div>
-            </div>
-            <div className="guest-counter">
-              <div className="guest-counter__label">
-                <span>{t('bk.children')}</span>
-                <span className="guest-counter__sub">{t('bk.ageKid')}</span>
-              </div>
-              <div className="guest-counter__control">
-                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', -1)} aria-label="Fewer children">−</button>
-                <input
-                  type="number"
-                  className="guest-counter__input"
-                  value={guestRaw.children}
-                  min="0" max={MAX_GUESTS}
-                  onChange={e => handleGuestChange('children', e.target.value)}
-                  onBlur={() => handleGuestBlur('children')}
-                />
-                <button type="button" className="guest-counter__btn" onClick={() => adjustGuests('children', 1)} aria-label="More children">+</button>
-              </div>
-            </div>
+            </>
+          ) : (
+            <p className="form-hint" style={{ marginTop: 0 }}>{t('bk.bookEntire')} · {t('bk.bestFor', { n: 16 })}</p>
+          )}
+        </div>
+
+        {/* Infants (up to 3 years) */}
+        <div className="form-group">
+          <div className="guest-counters">
             <div className="guest-counter">
               <div className="guest-counter__label">
                 <span>{t('bk.infants')}</span>
@@ -404,45 +382,11 @@ export default function BookingWidget({ variant = 'light' }) {
               </div>
             </div>
           </div>
-          {guestOverLimit && (
-            <p className="form-hint form-hint--error" style={{marginTop:'8px'}}>
-              {t('bk.maxGuests', { max: MAX_GUESTS })}
-            </p>
-          )}
         </div>
 
-        {/* Pricing Estimator — appears once dates are selected */}
-        {partialAllowed && (
-          <div className="form-group">
-            <label>{t('bk.bookingType')}</label>
-            <div className="booking-type" role="radiogroup" aria-label={t('bk.bookingType')}>
-              {[
-                { value: 'floor',  title: t('bk.bookFloor'),  sub: t('bk.bookFloorSub', { max: FLOOR_MAX_GUESTS }) },
-                { value: 'entire', title: t('bk.bookEntire'), sub: t('bk.bookEntireSub', { max: MAX_GUESTS }) },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={bookingType === opt.value}
-                  className={`booking-type__opt${bookingType === opt.value ? ' booking-type__opt--active' : ''}`}
-                  onClick={() => { setBookingType(opt.value); setError(''); }}
-                >
-                  <span className="booking-type__title">{opt.title}</span>
-                  <span className="booking-type__sub">{opt.sub}</span>
-                </button>
-              ))}
-            </div>
-            {floorOverLimit && (
-              <p className="form-hint form-hint--error" role="alert" style={{ marginTop: '8px' }}>
-                {t('bk.floorMax', { max: FLOOR_MAX_GUESTS })}
-              </p>
-            )}
-          </div>
-        )}
-
+        {/* Pricing estimate for the chosen accommodation — appears once dates are selected */}
         <PricingEstimator
-          floor={isFloor}
+          accommodation={accommodation}
           checkIn={dates.checkIn}
           checkOut={dates.checkOut}
         />
@@ -548,7 +492,7 @@ export default function BookingWidget({ variant = 'light' }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading || guestOverLimit || floorOverLimit}>
+        <button type="submit" className="btn btn-primary booking-widget__submit" disabled={loading}>
           {loading ? loadingMsg : t('common.sendEnquiry')}
           {!loading && (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
